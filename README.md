@@ -4,6 +4,8 @@ Live Formula 1 data, and a plain-English guide to how the sport works.
 
 Designed and built by **Najmi Zulhusni** · najmisapuan02@gmail.com
 
+**Live site: https://najmizulhusni.github.io/pit-wall/**
+
 Two pages, no framework, no build step, no API keys:
 
 - **Live dashboard** (`index.html`): standings, title maths, every race lap by lap, tyre strategy and telemetry replays for the current season, or any season since 2023.
