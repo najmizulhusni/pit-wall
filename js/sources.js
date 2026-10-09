@@ -425,6 +425,7 @@
       while (j < carT.length - 1 && Math.abs(carT[j + 1].t - p.t) <= Math.abs(carT[j].t - p.t)) j++;
       const c = carT[j] || {};
       p.speed = c.speed ?? null;
+      p.rpm = c.rpm ?? null;
       p.gear = c.n_gear ?? null;
       p.throttle = c.throttle ?? null;
       p.brake = c.brake ?? null;

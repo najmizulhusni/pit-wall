@@ -212,6 +212,7 @@ main { max-width: var(--wrap); margin: 0 auto; padding: 0 var(--gut); }
   text-transform: uppercase; line-height: .92; letter-spacing: -0.005em;
 }
 .lede { grid-column: 1; margin: 12px 0 0; color: var(--dust); max-width: 62ch; }
+.sec-num { display: inline-block; margin-right: .3em; color: transparent; -webkit-text-stroke: 1.5px var(--faint); }
 .block-head > .seg, .block-head > .session-pick, .block-head > .cal-progress, .block-head > .head-tools { grid-column: 2; grid-row: 1 / span 3; align-self: end; }
 .head-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px 14px; }
 .season-pick select { padding-top: 8px; padding-bottom: 8px; font-size: var(--t-s); }
@@ -254,7 +255,7 @@ select:hover { border-color: var(--dust); }
 .hero {
   display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   gap: clamp(28px, 4vw, 56px); align-items: center;
-  min-height: calc(100svh - var(--bar-h)); padding: 40px 0 72px;
+  padding: 40px 0 24px;
 }
 .hero-copy > .kicker { animation: fade 700ms var(--ease-out) both; }
 .race-name {
@@ -271,26 +272,38 @@ select:hover { border-color: var(--dust); }
 @keyframes slide-in { from { opacity: 0; transform: translate3d(-12px, 0, 0); } to { opacity: 1; transform: none; } }
 @keyframes lift { from { opacity: 0; transform: translate3d(0, 10px, 0); } to { opacity: 1; transform: none; } }
 
-.podium { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 2px; }
-.podium li {
-  display: grid; grid-template-columns: 1.6ch 4px minmax(0, 1fr) auto; gap: 14px; align-items: center;
-  padding: 9px 0; border-bottom: 1px solid var(--line);
-  animation: slide-in 700ms var(--ease-out) both; animation-delay: calc(380ms + var(--i) * 90ms);
+/* Podium: P2, P1, P3 left to right; the steps rise in that order, P1 last. */
+.podium {
+  list-style: none; margin: 4px 0 24px; padding: 0;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-items: end;
+  border-bottom: 2px solid var(--line);
 }
-.podium .p { font-weight: 800; font-stretch: 75%; font-size: var(--t-xl); line-height: 1; color: var(--dust); }
-.podium li:first-child .p { color: var(--chalk); }
-.podium .tc { height: 30px; border-radius: 2px; }
-.podium .who { min-width: 0; }
-.podium .who b { display: block; font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.podium small { color: var(--dust); display: block; font-size: var(--t-xs); }
-.podium .t { font-stretch: 87%; font-size: var(--t-s); color: var(--dust); }
-.podium li:first-child .t { color: var(--chalk); }
+.step { display: grid; gap: 10px; min-width: 0; }
+.step.s1 { order: 2; --h: 128px; --tb: 520ms; --tw: 900ms; }
+.step.s2 { order: 1; --h: 98px; --tb: 400ms; --tw: 780ms; }
+.step.s3 { order: 3; --h: 76px; --tb: 280ms; --tw: 660ms; }
+.step .pdr { display: grid; gap: 2px; min-width: 0; padding: 0 2px; animation: lift 600ms var(--ease-out) both; animation-delay: var(--tw); }
+.step .pdr b { font-size: var(--t-xl); font-weight: 860; font-stretch: 75%; line-height: 1; }
+.step .pdr span { font-size: var(--t-s); font-weight: 650; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step .pdr small { font-size: var(--t-xs); color: var(--dust); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step .block {
+  height: var(--h); padding: 12px 12px 10px; border-radius: 6px 6px 0 0;
+  display: grid; align-content: space-between;
+  background: var(--pit); box-shadow: inset 0 4px 0 var(--c);
+  transform-origin: 50% 100%; animation: grow-up 800ms var(--ease-out) both; animation-delay: var(--tb);
+}
+.step .n { font-size: 2.6rem; font-weight: 870; font-stretch: 75%; line-height: .85; color: var(--faint); }
+.step.s1 .n { color: var(--chalk); }
+.step .t { font-size: var(--t-xs); color: var(--dust); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.step.s1 .t { color: var(--chalk); }
+@keyframes grow-up { from { transform: scaleY(0); } to { transform: none; } }
 
 .hero-notes { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: var(--t-s); }
 .hero-notes li { display: flex; justify-content: space-between; gap: 16px; color: var(--dust); animation: fade 700ms var(--ease-out) both; animation-delay: 700ms; }
 .hero-notes b { color: var(--chalk); font-weight: 600; text-align: right; }
 
-.next { margin-top: 32px; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--pit); animation: lift 800ms var(--ease-out) 800ms both; }
+.hero-band { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr)); gap: 20px; align-items: start; margin-bottom: 8px; }
+.next { margin: 0; padding: 18px 20px; border: 1px solid var(--line); border-radius: 12px; background: var(--pit); animation: lift 800ms var(--ease-out) 800ms both; }
 .next-k { margin: 0; display: flex; align-items: center; gap: 8px; font-size: var(--t-xs); font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--dust); }
 .next-name { margin: 2px 0 12px; font-weight: 700; font-stretch: 112%; font-size: var(--t-l); line-height: 1.2; }
 .next-when { margin: 10px 0 0; color: var(--dust); font-size: var(--t-s); }
@@ -325,7 +338,11 @@ select:hover { border-color: var(--dust); }
   animation: lift 900ms var(--ease-out) 150ms both;
 }
 .lap-head { grid-area: head; padding-right: 120px; }
-.lap-title { margin: 0; font-weight: 700; font-stretch: 112%; }
+.lap-title { margin: 0; display: flex; align-items: center; gap: 10px; font-weight: 700; font-stretch: 112%; }
+.tag-pb {
+  flex-shrink: 0; padding: 3px 8px; border-radius: 4px; background: var(--pb); color: #fff;
+  font-size: 0.6875rem; font-weight: 700; font-stretch: 100%; letter-spacing: .1em; text-transform: uppercase;
+}
 .lap-sub { margin: 2px 0 0; color: var(--dust); font-size: var(--t-s); }
 .track-wrap { grid-area: track; position: relative; min-height: 300px; }
 .track-wrap .track { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; }
@@ -333,28 +350,51 @@ select:hover { border-color: var(--dust); }
 .track { width: 100%; height: 100%; min-height: 300px; overflow: visible; }
 .track .tarmac { stroke: var(--tarmac-edge); }
 .track .sf { stroke: var(--chalk); }
-.track .car { fill: var(--chalk); stroke: var(--pit); stroke-width: 4; opacity: 0; transition: opacity 500ms; }
-.track .car.on { opacity: 1; }
-.track .trail { stroke: var(--chalk); stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; opacity: .3; }
+.track .trail { stroke: var(--car, var(--chalk)); stroke-width: 6; stroke-linecap: round; stroke-linejoin: round; opacity: .42; }
+/* The replay car: team colour body, carbon wings and floor, a halo over the cockpit. */
+.racecar { opacity: 0; transition: opacity 500ms; }
+.racecar.on { opacity: 1; }
+.racecar .c-shadow { fill: #000; opacity: .32; }
+:root[data-theme="light"] .racecar .c-shadow { opacity: .16; }
+.racecar .c-carbon { fill: #15171b; }
+.racecar .c-tyre { fill: #0a0b0d; }
+.racecar .c-floor { fill: #1d2025; }
+.racecar .c-arm { fill: none; stroke: #30343a; stroke-width: 1.4; }
+.racecar .c-body, .racecar .c-accent { fill: var(--car, var(--chalk)); }
+.racecar .c-body { stroke: rgb(0 0 0 / .35); stroke-width: .8; }
+.racecar .c-stripe { fill: #f5f6f7; opacity: .85; }
+.racecar .c-cockpit { fill: #07080a; }
+.racecar .c-helmet { fill: #f5f6f7; }
+.racecar .c-halo { fill: none; stroke: #0b0c0e; stroke-width: 1.7; stroke-linecap: round; }
 .lap:not(.ready) .readout, .lap:not(.ready) .legend, .lap:not(.ready) .replay { visibility: hidden; }
 .lap .readout, .lap .legend { transition: opacity 600ms var(--ease-out); }
 .lap:not(.ready) .readout, .lap:not(.ready) .legend { opacity: 0; }
 .lap-empty { grid-area: track; align-self: center; margin: 0; max-width: 46ch; color: var(--dust); font-size: var(--t-s); }
 .lap-empty b { display: block; color: var(--chalk); font-weight: 600; margin-bottom: 4px; }
-.readout { grid-area: read; display: flex; align-items: flex-end; gap: 26px; flex-wrap: wrap; contain: layout style; }
-.readout b { display: block; font-weight: 700; font-stretch: 75%; line-height: .9; }
-.readout span { font-size: var(--t-xs); color: var(--dust); }
-.speed b { font-size: var(--t-3xl); min-width: 3ch; }
-.gear b { font-size: var(--t-2xl); min-width: 1ch; }
-.pedals { display: grid; gap: 6px; font-size: var(--t-xs); color: var(--dust); }
-.pedals label { display: grid; grid-template-columns: 54px 100px; align-items: center; }
-.meter { height: 6px; background: var(--pit-2); border-radius: 3px; overflow: hidden; }
-.meter i, .lap-prog i { display: block; height: 100%; width: 100%; transform: scaleX(0); transform-origin: 0 50%; background: var(--ok); will-change: transform; }
-.meter.brake i { background: var(--bad); }
-.clock { display: grid; gap: 7px; }
-.clock b { font-size: var(--t-l); min-width: 5ch; }
-.lap-prog { display: block; width: 110px; height: 3px; border-radius: 2px; background: var(--pit-2); overflow: hidden; }
-.lap-prog i { background: var(--chalk); }
+/* Onboard strip: rev lights like a steering wheel, gear, speed, pedals, lap clock. */
+.onboard { grid-area: read; display: grid; gap: 12px; contain: layout style; }
+.revs { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; width: min(100%, 340px); }
+.revs i { height: 7px; border-radius: 4px; background: var(--pit-2); }
+.revs i.on:nth-child(-n+5) { background: #22c55e; }
+.revs i.on:nth-child(n+6):nth-child(-n+10) { background: #ef4444; }
+.revs i.on:nth-child(n+11) { background: #3b82f6; }
+.ob { display: flex; align-items: stretch; gap: 22px; flex-wrap: wrap; }
+.ob-gear { display: grid; place-items: center; align-content: center; width: 58px; padding: 6px 0 5px; border-radius: 8px; background: var(--chalk); color: var(--asphalt); }
+.ob-gear b { font-size: var(--t-2xl); font-weight: 860; font-stretch: 75%; line-height: .95; }
+.ob-gear span { font-size: 0.625rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; opacity: .7; }
+.ob-speed { display: grid; align-content: end; }
+.ob-speed b { font-size: var(--t-3xl); font-weight: 800; font-stretch: 75%; line-height: .85; min-width: 3ch; }
+.ob-speed span { font-size: var(--t-xs); color: var(--dust); }
+.ob-pedals { display: grid; grid-template-columns: 22px 22px; grid-template-rows: 1fr auto; gap: 4px 6px; align-items: end; justify-items: center; }
+.pedal { position: relative; display: block; width: 14px; height: 46px; border-radius: 4px; background: var(--pit-2); overflow: hidden; }
+.pedal i { position: absolute; inset: 0; background: var(--ok); transform: scaleY(0); transform-origin: 50% 100%; will-change: transform; }
+.pedal.brk i { background: var(--bad); }
+.ob-pedals .pl { font-size: 0.625rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--dust); }
+.ob-clock { display: grid; align-content: end; gap: 5px; }
+.ob-clock span:first-child { font-size: var(--t-xs); color: var(--dust); }
+.ob-clock b { font-size: var(--t-l); font-weight: 750; font-stretch: 87%; line-height: 1; min-width: 5ch; font-variant-numeric: tabular-nums; }
+.lap-prog { display: block; width: 120px; height: 3px; border-radius: 2px; background: var(--pit-2); overflow: hidden; }
+.lap-prog i { display: block; height: 100%; width: 100%; background: var(--chalk); transform: scaleX(0); transform-origin: 0 50%; will-change: transform; }
 .legend { grid-area: legend; align-self: end; display: flex; align-items: center; gap: 8px; font-size: var(--t-xs); color: var(--dust); }
 .legend i { width: 96px; height: 6px; border-radius: 3px; }
 .replay {
@@ -369,23 +409,30 @@ select:hover { border-color: var(--dust); }
 .season-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); gap: 28px; align-items: start; margin-bottom: 28px; }
 .standings { list-style: none; margin: 0; padding: 0; }
 .standings li, .standings-head {
-  display: grid; grid-template-columns: 2.2ch 4px minmax(0, 13rem) 1fr 4.5ch;
+  display: grid; grid-template-columns: 2.5rem 4px minmax(0, 13rem) 1fr 5.5ch;
   align-items: center; gap: 12px;
 }
-.standings.has-form li, .standings-head.has-form { grid-template-columns: 2.2ch 4px minmax(0, 12rem) auto 1fr 4.5ch; }
+.standings.has-form li, .standings-head.has-form { grid-template-columns: 2.5rem 4px minmax(0, 12rem) auto 1fr 5.5ch; }
 .standings-head { padding: 0 0 8px; border-bottom: 1px solid var(--line); font-size: 0.6875rem; letter-spacing: .1em; text-transform: uppercase; color: var(--faint); }
-.standings-head span:first-child, .standings-head span:last-child { text-align: right; }
+.standings-head span:first-child { text-align: center; }
+.standings-head span:last-child { text-align: right; }
 .standings li { padding: 8px 0; border-bottom: 1px solid var(--line); }
 .standings li.anim { opacity: 0; }
 .standings.play li.anim { animation: lift 600ms var(--ease-out) both; animation-delay: calc(var(--i) * 32ms); }
-.standings .pos { color: var(--dust); font-stretch: 75%; text-align: right; }
+/* Position badge, slanted like a timing tower; the leader's is filled. */
+.standings .pos { position: relative; isolation: isolate; display: grid; place-items: center; height: 26px; font-weight: 800; font-stretch: 75%; }
+.standings .pos::before { content: ""; position: absolute; inset: 0 4px; z-index: -1; border-radius: 3px; background: var(--pit-2); transform: skewX(-14deg); }
+.standings li.lead .pos { color: var(--asphalt); }
+.standings li.lead .pos::before { background: var(--chalk); }
 .standings .tc { height: 22px; border-radius: 2px; background: var(--c); }
 .standings .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .standings .nm b { font-weight: 650; }
 .standings .nm span { color: var(--dust); font-size: var(--t-s); margin-left: 8px; }
 .standings .bar { height: 8px; border-radius: 2px; background: var(--pit-2); overflow: hidden; }
 .standings .bar i { display: block; height: 100%; width: 100%; background: var(--c); transform: scaleX(var(--w, 0)); transform-origin: 0 50%; transition: transform 900ms var(--ease-out); transition-delay: calc(var(--i, 0) * 32ms); }
-.standings .pts { text-align: right; font-weight: 700; font-stretch: 75%; font-size: var(--t-l); }
+.standings .pts { display: grid; justify-items: end; line-height: 1; }
+.standings .pts b { font-weight: 750; font-stretch: 75%; font-size: var(--t-l); }
+.standings .pts small { margin-top: 3px; font-size: 0.6875rem; color: var(--dust); font-variant-numeric: tabular-nums; }
 .form { display: flex; gap: 3px; }
 .f {
   width: 22px; height: 22px; display: grid; place-items: center; border-radius: 4px;
@@ -684,7 +731,7 @@ select:hover { border-color: var(--dust); }
 .notice a { margin-left: 10px; color: var(--chalk); font-weight: 600; }
 
 .follow {
-  position: relative; margin-top: 26px; padding: 14px 16px 14px 18px; border-radius: 12px;
+  position: relative; margin: 0; padding: 14px 16px 14px 18px; border-radius: 12px;
   border: 1px solid var(--line); background: var(--pit);
   animation: lift 800ms var(--ease-out) 760ms both;
 }
@@ -693,9 +740,25 @@ select:hover { border-color: var(--dust); }
 .follow-pick select { padding: 6px 30px 6px 10px; font-size: var(--t-s); letter-spacing: 0; text-transform: none; color: var(--chalk); max-width: 60%; }
 .follow-line { margin: 10px 0 0; font-size: var(--t-s); color: var(--dust); line-height: 1.5; }
 .follow.set .follow-line { color: var(--chalk); }
+.follow-stats:empty, .follow-chips:empty { display: none; }
+.follow-stats { margin-top: 12px; display: grid; gap: 10px; animation: fade 500ms var(--ease-out); }
+.fs-name b { display: block; font-size: var(--t-xl); font-weight: 850; font-stretch: 75%; text-transform: uppercase; line-height: 1; }
+.fs-name span { font-size: var(--t-xs); color: var(--dust); }
+.fs-nums { margin: 0; display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.fs-nums dt { font-size: var(--t-xs); color: var(--dust); }
+.fs-nums dd { margin: 2px 0 0; font-size: var(--t-l); font-weight: 750; font-stretch: 75%; line-height: 1.1; }
+.fs-nums .fs-form dd { display: flex; gap: 3px; margin-top: 4px; font-size: inherit; }
+.follow-chips { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
+.fchip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 8px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--asphalt); font-size: var(--t-xs); font-weight: 700; font-stretch: 87%; cursor: pointer;
+  transition: border-color 200ms, transform 200ms var(--ease-out);
+}
+.fchip i { width: 9px; height: 9px; border-radius: 50%; background: var(--c); }
+.fchip:hover { border-color: var(--c); transform: translate3d(0, -1px, 0); }
 
 .standings li.mine { background: color-mix(in srgb, var(--c) 9%, transparent); box-shadow: inset 3px 0 0 var(--c); }
-.standings li.mine .pos { color: var(--chalk); font-weight: 800; }
+.standings li.mine .pos::before { background: color-mix(in srgb, var(--c) 45%, var(--pit-2)); }
 
 .tr-mine { margin: -10px 0 24px; padding: 12px 14px; border-radius: 10px; border: 1px dashed var(--line); font-size: var(--t-s); line-height: 1.5; }
 .tr-mine span { display: block; font-size: var(--t-xs); font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--dust); margin-bottom: 2px; }
@@ -758,11 +821,13 @@ select:hover { border-color: var(--dust); }
   .lap { grid-template-areas: "head head" "track track" "read read" "legend legend"; padding: 16px; border-radius: 14px; }
   .lap-head { padding-right: 0; }
   .track-wrap { min-height: 0; aspect-ratio: 10 / 7; }
-  .readout { gap: 14px 18px; }
-  .pedals label { grid-template-columns: 54px 80px; }
+  .ob { gap: 14px 18px; }
+  .step .n { font-size: 2.1rem; }
+  .step.s1 { --h: 108px; } .step.s2 { --h: 84px; } .step.s3 { --h: 66px; }
+  .step .block { padding: 10px 8px 8px; }
   .replay { position: static; justify-self: start; grid-column: 1 / -1; }
   .count span { min-width: 0; flex: 1; }
-  .standings li, .standings-head, .standings.has-form li, .standings-head.has-form { grid-template-columns: 2.2ch 4px minmax(0, 1fr) 4.5ch; }
+  .standings li, .standings-head, .standings.has-form li, .standings-head.has-form { grid-template-columns: 2.5rem 4px minmax(0, 1fr) 5.5ch; }
   .standings .bar, .standings .form, .standings-head .h-form, .standings-head .h-bar { display: none; }
   .standings .nm span { display: block; margin-left: 0; font-size: var(--t-xs); }
   .who select { min-width: 0; width: 100%; }

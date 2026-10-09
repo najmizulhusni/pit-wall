@@ -78,16 +78,11 @@
         <h1 class="race-name" id="hero-title"><span class="sk w12"></span><span class="sk w9"></span></h1>
         <ol class="podium" id="hero-podium" aria-label="Podium"></ol>
         <ul class="hero-notes" id="hero-notes"></ul>
-        <div class="follow" id="follow" hidden>
-          <label class="follow-pick"><span>Your driver</span><select id="follow-pick"></select></label>
-          <p class="follow-line" id="follow-line"></p>
-        </div>
-        <div class="next" id="next-race" hidden></div>
       </div>
 
       <figure class="lap" id="lap">
         <figcaption class="lap-head">
-          <p class="lap-title" id="lap-title">Loading the fastest lap</p>
+          <p class="lap-title"><span class="tag-pb">Fastest lap</span><span id="lap-title">Loading telemetry</span></p>
           <p class="lap-sub" id="lap-sub"></p>
         </figcaption>
         <div class="track-wrap">
@@ -95,25 +90,38 @@
           <svg id="hero-car" class="track overlay" aria-hidden="true"></svg>
         </div>
         <p class="lap-empty" id="lap-empty" hidden></p>
-        <div class="readout" aria-hidden="true">
-          <div class="speed"><b id="r-speed">0</b><span>km/h</span></div>
-          <div class="gear"><b id="r-gear">N</b><span>gear</span></div>
-          <div class="pedals">
-            <label>Throttle<span class="meter"><i id="r-thr"></i></span></label>
-            <label>Brake<span class="meter brake"><i id="r-brk"></i></span></label>
+        <div class="readout onboard" aria-hidden="true">
+          <div class="revs" id="revs"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="ob">
+            <div class="ob-gear"><b id="r-gear">N</b><span>Gear</span></div>
+            <div class="ob-speed"><b id="r-speed">0</b><span>km/h</span></div>
+            <div class="ob-pedals">
+              <span class="pedal"><i id="r-thr"></i></span><span class="pedal brk"><i id="r-brk"></i></span>
+              <span class="pl">Thr</span><span class="pl">Brk</span>
+            </div>
+            <div class="ob-clock"><span>Lap time</span><b id="r-clock">0:00.0</b><span class="lap-prog"><i id="r-prog"></i></span></div>
           </div>
-          <div class="clock"><b id="r-clock">0:00.0</b><span class="lap-prog"><i id="r-prog"></i></span></div>
         </div>
         <div class="legend"><span>Slower</span><i id="ramp"></i><span>Faster</span></div>
         <button class="replay" id="replay" type="button">Pause replay</button>
       </figure>
     </section>
 
+    <div class="hero-band">
+      <div class="next" id="next-race" hidden></div>
+      <div class="follow" id="follow" hidden>
+        <label class="follow-pick"><span>Your driver</span><select id="follow-pick"></select></label>
+        <div class="follow-stats" id="follow-stats"></div>
+        <p class="follow-line" id="follow-line"></p>
+        <div class="follow-chips" id="follow-chips" role="group" aria-label="Quick pick"></div>
+      </div>
+    </div>
+
     <!-- Season -->
     <section class="block" id="season">
       <div class="block-head" data-reveal>
         <p class="kicker" id="season-kicker">Championship</p>
-        <h2>Standings</h2>
+        <h2><span class="sec-num" aria-hidden="true">01</span>Standings</h2>
         <div class="head-tools">
           <label class="season-pick"><span class="sr">Season</span><select id="season-pick"><option value="">This season</option></select></label>
           <div class="seg" role="tablist" aria-label="Standings type">
@@ -156,7 +164,7 @@
     <section class="block" id="calendar">
       <div class="block-head" data-reveal>
         <p class="kicker" id="cal-kicker">Calendar</p>
-        <h2>Rounds</h2>
+        <h2><span class="sec-num" aria-hidden="true">02</span>Rounds</h2>
         <div class="head-tools">
           <div class="cal-progress" id="cal-progress"></div>
           <button class="ics" type="button" id="cal-ics" data-ics="season" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Add the rest of the season to your calendar</button>
@@ -172,7 +180,7 @@
     <section class="block" id="h2h">
       <div class="block-head" data-reveal>
         <p class="kicker">Season duel</p>
-        <h2>Head to head</h2>
+        <h2><span class="sec-num" aria-hidden="true">03</span>Head to head</h2>
         <p class="lede">Pick any two drivers. Season numbers come from Jolpica, the lap comparison from OpenF1 telemetry.</p>
       </div>
       <div class="pick" data-reveal>
@@ -212,7 +220,7 @@
     <section class="block" id="race">
       <div class="block-head" data-reveal>
         <p class="kicker" id="race-kicker">Session</p>
-        <h2 id="race-title">Race</h2>
+        <h2><span class="sec-num" aria-hidden="true">04</span><span id="race-title">Race</span></h2>
         <label class="session-pick"><span class="sr">Session</span><select id="session"></select></label>
       </div>
       <p class="conditions" id="conditions"></p>
@@ -271,7 +279,7 @@
     <section class="block" id="feed-section">
       <div class="block-head" data-reveal>
         <p class="kicker">Under the hood</p>
-        <h2>Data feed</h2>
+        <h2><span class="sec-num" aria-hidden="true">05</span>Data feed</h2>
         <p class="lede">Every number on this page is fetched live from two public APIs and worked out in your browser. No server, no database, no framework.</p>
       </div>
       <dl class="counters" id="counters" data-reveal></dl>

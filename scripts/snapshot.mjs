@@ -26,7 +26,7 @@ const pick = (rows, keys) => rows.map(r => Object.fromEntries(keys.filter(k => k
 function slim(p, data) {
   if (!Array.isArray(data)) return data;
   if (p.startsWith("location?")) return pick(data, ["date", "x", "y"]);
-  if (p.startsWith("car_data?")) return pick(data, ["date", "speed", "n_gear", "throttle", "brake"]);
+  if (p.startsWith("car_data?")) return pick(data, ["date", "speed", "rpm", "n_gear", "throttle", "brake"]);
   if (p.startsWith("laps?")) return pick(data, ["driver_number", "lap_number", "lap_duration", "is_pit_out_lap", "date_start",
     "duration_sector_1", "duration_sector_2", "duration_sector_3", "st_speed"]);
   if (p.startsWith("weather?")) return data.slice(-1);

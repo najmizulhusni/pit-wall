@@ -145,12 +145,11 @@
       title.dataset.round = r.round;
       title.innerHTML = r.name.split(" ").map((w, i) => `<span class="w" style="--i:${i}"><span>${esc(w)}</span></span>`).join(" ");
     }
-    $("#hero-podium").innerHTML = r.results.slice(0, 3).map((x, i) => `
-      <li style="--i:${i}">
-        <span class="p">${x.pos}</span>
-        <span class="tc" style="background:${state.colourFor(x.driver.code, x.teamId)}"></span>
-        <span class="who"><b>${esc(x.driver.given)} ${esc(x.driver.family)}</b><small>${esc(x.team)}</small></span>
-        <span class="t">${esc(x.time || x.status)}</span>
+    // A podium you can read at a glance: P2, P1, P3 left to right, steps rising in that order.
+    $("#hero-podium").innerHTML = r.results.slice(0, 3).map(x => `
+      <li class="step s${x.pos}" style="--c:${state.colourFor(x.driver.code, x.teamId)}">
+        <div class="pdr"><b>${esc(x.driver.code)}</b><span>${esc(shortName(x.driver))}</span><small>${esc(x.team)}</small></div>
+        <div class="block"><span class="n">${x.pos}</span><span class="t">${esc(x.time || x.status)}</span></div>
       </li>`).join("");
 
     const gain = r.results.filter(x => x.grid && x.finished).map(x => ({ ...x, gain: x.grid - x.pos })).sort((a, b) => b.gain - a.gain)[0];
@@ -237,19 +236,21 @@
     host.innerHTML = (cut ? rows.slice(0, 10) : rows).map((r, i) => {
       const colour = drivers ? state.colourFor(r.driver.code, r.teamId) : teamColour(r.teamId);
       const who = drivers
-        ? `<b>${esc(r.driver.given)} ${esc(r.driver.family)}</b><span>${esc(r.team)}</span>`
+        ? `<b>${esc(shortName(r.driver))}</b><span>${esc(r.team)}</span>`
         : `<b>${esc(r.team)}</b><span>${r.wins ? plural(r.wins, "win") : ""}</span>`;
       const mine = drivers && state.follow && r.driver.id === state.follow;
-      return `<li class="${animate ? "anim" : ""}${mine ? " mine" : ""}" style="--c:${colour};--i:${i}"><span class="pos">${r.pos ?? "–"}</span><span class="tc"></span>
+      const gap = rows[0].points - r.points;
+      return `<li class="${animate ? "anim" : ""}${mine ? " mine" : ""}${i === 0 ? " lead" : ""}" style="--c:${colour};--i:${i}"><span class="pos"><b>${r.pos ?? "–"}</b></span><span class="tc"></span>
         <span class="nm">${who}</span>${showForm ? `<span class="form">${formCells(r.driver.id)}</span>` : ""}
-        <span class="bar"><i data-w="${(r.points / max).toFixed(4)}"></i></span><span class="pts" data-v="${r.points}">${animate ? 0 : fmtPts(r.points)}</span></li>`;
+        <span class="bar"><i data-w="${(r.points / max).toFixed(4)}"></i></span>
+        <span class="pts"><b data-v="${r.points}">${animate ? 0 : fmtPts(r.points)}</b><small>${i ? `−${fmtPts(gap)}` : "Leader"}</small></span></li>`;
     }).join("");
 
     const play = () => {
       host.dataset.played = "1";
       host.classList.add("play");
       $$(".bar i", host).forEach(b => b.style.setProperty("--w", b.dataset.w));
-      if (animate) $$(".pts", host).forEach(n => countUp(n, Number(n.dataset.v)));
+      if (animate) $$(".pts b", host).forEach(n => countUp(n, Number(n.dataset.v)));
     };
     if (!animate) return play();
     host.classList.remove("play");
@@ -604,14 +605,35 @@
   */
   const TRAIL_MS = 1400;
   const SPEED_STEPS = 24;
-  const hero = { tel: null, xy: null, map: null, car: null, trail: null, raf: 0, t0: 0, paused: C.reduced(), visible: true, offset: 0, idx: 0, shown: {}, sample: -1 };
-  const readout = { speed: $("#r-speed"), gear: $("#r-gear"), thr: $("#r-thr"), brk: $("#r-brk"), clock: $("#r-clock"), prog: $("#r-prog") };
+  const LOOK_MS = 240;                       // the car points at where it will be a quarter-second from now
+  const hero = { tel: null, xy: null, map: null, car: null, trail: null, raf: 0, t0: 0, paused: C.reduced(), visible: true, offset: 0, idx: 0, shown: {}, sample: -1, angle: null, rpm: null, revN: -1 };
+  const readout = { speed: $("#r-speed"), gear: $("#r-gear"), thr: $("#r-thr"), brk: $("#r-brk"), clock: $("#r-clock"), prog: $("#r-prog"), leds: $$("#revs i") };
+
+  /*
+    A top-down F1 car, nose along +x, about 75 units long in the track's 1000-unit space.
+    The body and wing endplates take the team colour from --car; carbon, tyres and halo stay dark.
+  */
+  const CAR = `
+    <ellipse class="c-shadow" cx="3" cy="4" rx="38" ry="15"/>
+    <rect class="c-carbon" x="-38" y="-11.5" width="7" height="23" rx="1.5"/>
+    <rect class="c-accent" x="-38" y="-11.5" width="7" height="2.6" rx="1"/><rect class="c-accent" x="-38" y="8.9" width="7" height="2.6" rx="1"/>
+    <path class="c-arm" d="M-24 -8V-13M-24 8V13M16.5 -3.4V-12M16.5 3.4V12"/>
+    <rect class="c-tyre" x="-31" y="-17.5" width="13" height="7" rx="2.6"/><rect class="c-tyre" x="-31" y="10.5" width="13" height="7" rx="2.6"/>
+    <rect class="c-tyre" x="11" y="-15.5" width="11" height="6" rx="2.3"/><rect class="c-tyre" x="11" y="9.5" width="11" height="6" rx="2.3"/>
+    <rect class="c-carbon" x="31" y="-15.5" width="6" height="31" rx="1.6"/>
+    <rect class="c-accent" x="31" y="-15.5" width="6" height="3" rx="1"/><rect class="c-accent" x="31" y="12.5" width="6" height="3" rx="1"/>
+    <path class="c-floor" d="M-29 -7L-14 -12.3H3L9 -6V6L3 12.3H-14L-29 7Z"/>
+    <path class="c-body" d="M-31 -3.4C-25 -4.2 -19 -9.6 -12 -9.8H1C6 -9.8 8 -5.2 12.5 -3.3L31 -1.8C33.5 -1.6 35 -.9 35 0C35 .9 33.5 1.6 31 1.8L12.5 3.3C8 5.2 6 9.8 1 9.8H-12C-19 9.6 -25 4.2 -31 3.4Z"/>
+    <rect class="c-stripe" x="-27" y="-1.1" width="58" height="2.2" rx="1.1"/>
+    <ellipse class="c-cockpit" cx="3.5" cy="0" rx="5.2" ry="3.3"/>
+    <circle class="c-helmet" cx="2.4" cy="0" r="2.2"/>
+    <path class="c-halo" d="M-1.6 -3.9Q9.6 -4.4 10.6 0Q9.6 4.4 -1.6 3.9"/>`;
 
   async function renderHeroLap(session, laps, drivers, liveSession) {
     const best = S.fastestLap(laps);
     if (!best) return heroEmpty("No timed laps", "OpenF1 has no lap times for this session yet.");
     const d = drivers.get(best.driver_number) || { name: `Car ${best.driver_number}` };
-    $("#lap-title").textContent = `Fastest lap, ${sessionName(session)}`;
+    $("#lap-title").textContent = sessionName(session);
     $("#lap-sub").textContent = `${d.name}${d.team ? `, ${d.team}` : ""}. Lap ${best.lap_number}, ${lapTime(best.lap_duration)}` +
       (liveSession ? `. A session is running now; OpenF1 limits live data on its free tier, so this is the last completed one.` : "");
     let tel;
@@ -625,11 +647,17 @@
     const over = $("#hero-car");
     over.setAttribute("viewBox", map.viewBox);
     over.innerHTML = "";
-    Object.assign(hero, { tel, map, xy: map.xy, idx: 0, offset: 0, shown: {}, sample: -1 });
+    // Rev lights span this lap's own RPM range, so they sweep fully on every straight.
+    const rpms = tel.points.map(p => p.rpm).filter(v => v > 0).sort((a, b) => a - b);
+    const rpm = rpms.length > 20 ? [rpms[Math.floor(rpms.length * 0.05)], rpms[Math.floor(rpms.length * 0.98)]] : null;
+    Object.assign(hero, { tel, map, xy: map.xy, idx: 0, offset: 0, shown: {}, sample: -1, angle: null, rpm, revN: -1 });
+    $("#revs").hidden = !rpm;
     $("#lap").classList.add("ready");
     $("#lap-empty").hidden = true;
+    over.style.setProperty("--car", d.colour || "var(--chalk)");
     hero.trail = C.el("path", { class: "trail", fill: "none" }, over);
-    hero.car = C.el("circle", { r: 12, class: "car" }, over);
+    hero.car = C.el("g", { class: "racecar" }, over);
+    hero.car.innerHTML = CAR;
     place(0, 0);
     $("#replay").textContent = hero.paused ? "Play replay" : "Pause replay";
     setTimeout(() => { hero.car.classList.add("on"); hero.t0 = performance.now(); loop(); }, map.drawMs);
@@ -643,13 +671,35 @@
 
   const setText = (key, node, v) => { if (hero.shown[key] !== v) { hero.shown[key] = v; node.textContent = v; } };
 
+  /* Where the car is at lap time t, searching forward from sample i. */
+  function pointAt(t, i = 0) {
+    const pts = hero.tel.points, xy = hero.xy, dur = pts.at(-1).ms;
+    if (t > dur) { t -= dur; i = 0; }
+    if (t < pts[i].ms) i = 0;
+    while (i < pts.length - 2 && pts[i + 1].ms <= t) i++;
+    const k = Math.min(1, Math.max(0, (t - pts[i].ms) / (pts[i + 1].ms - pts[i].ms || 1)));
+    return [xy[i][0] + (xy[i + 1][0] - xy[i][0]) * k, xy[i][1] + (xy[i + 1][1] - xy[i][1]) * k];
+  }
+
   /* Place the car k of the way from sample i to i+1, at lap time t (ms). */
   function place(i, k, t = 0) {
     const pts = hero.tel.points, xy = hero.xy;
     const a = xy[i], b = xy[Math.min(i + 1, xy.length - 1)];
-    const x = (a[0] + (b[0] - a[0]) * k).toFixed(1), y = (a[1] + (b[1] - a[1]) * k).toFixed(1);
-    hero.car.setAttribute("cx", x);
-    hero.car.setAttribute("cy", y);
+    const xn = a[0] + (b[0] - a[0]) * k, yn = a[1] + (b[1] - a[1]) * k;
+    const x = xn.toFixed(1), y = yn.toFixed(1);
+
+    // Heading: aim at a point slightly ahead, then ease towards it so the 4 Hz samples don't make it twitch.
+    const [ax, ay] = pointAt(t + LOOK_MS, i);
+    if (Math.hypot(ax - xn, ay - yn) > 0.5) {
+      const target = Math.atan2(ay - yn, ax - xn);
+      if (hero.angle == null) hero.angle = target;
+      else {
+        let d = target - hero.angle;
+        d = Math.atan2(Math.sin(d), Math.cos(d));
+        hero.angle += d * 0.22;
+      }
+    }
+    hero.car.setAttribute("transform", `translate(${x} ${y}) rotate(${((hero.angle || 0) * 180 / Math.PI).toFixed(1)}) scale(1.3)`);
 
     let j = i, d = "";
     while (j > 0 && t - pts[j].ms < TRAIL_MS) j--;
@@ -661,8 +711,17 @@
       const p = pts[i];
       setText("speed", readout.speed, String(p.speed ?? "–"));
       setText("gear", readout.gear, p.gear ? String(p.gear) : "N");
-      readout.thr.style.transform = `scaleX(${(p.throttle ?? 0) / 100})`;
-      readout.brk.style.transform = `scaleX(${p.brake ? 1 : 0})`;
+      readout.thr.style.transform = `scaleY(${(p.throttle ?? 0) / 100})`;
+      readout.brk.style.transform = `scaleY(${p.brake ? 1 : 0})`;
+      if (hero.rpm && p.rpm) {
+        const [lo, hiR] = hero.rpm;
+        const n = Math.max(0, Math.min(15, Math.round(((p.rpm - lo) / (hiR - lo || 1)) * 15)));
+        if (n !== hero.revN) {
+          const from = Math.min(n, Math.max(0, hero.revN)), to = Math.max(n, hero.revN);
+          for (let j = from; j < to; j++) readout.leds[j].classList.toggle("on", j < n);
+          hero.revN = n;
+        }
+      }
     }
     const s = t / 1000;
     setText("clock", readout.clock, `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`);
@@ -1051,8 +1110,23 @@
     const row = c?.row;
     host.style.setProperty("--c", row ? state.colourFor(row.driver.code, row.teamId) : "var(--line)");
     host.classList.toggle("set", Boolean(c));
-    $("#follow-line").innerHTML = c ? followSentence(c, model)
-      : "Pick a driver and the page follows them: highlighted in the standings, in the head to head, and on every race chart.";
+    if (!c) {
+      $("#follow-stats").innerHTML = "";
+      $("#follow-line").textContent = "Pick a driver and the page follows them: highlighted in the standings, in the head to head, and on every race chart.";
+      $("#follow-chips").innerHTML = rows.slice(0, 8).map(r =>
+        `<button type="button" class="fchip" data-id="${esc(r.driver.id)}" style="--c:${state.colourFor(r.driver.code, r.teamId)}" title="${esc(shortName(r.driver))}"><i></i>${esc(r.driver.code)}</button>`).join("");
+      return;
+    }
+    $("#follow-chips").innerHTML = "";
+    $("#follow-stats").innerHTML = `
+      <div class="fs-name"><b>${esc(shortName(row.driver))}</b><span>${esc(row.team)}</span></div>
+      <dl class="fs-nums">
+        <div><dt>Position</dt><dd>P${c.pos}</dd></div>
+        <div><dt>Points</dt><dd>${fmtPts(row.points)}</dd></div>
+        <div><dt>Wins</dt><dd>${row.wins}</dd></div>
+        ${state.rounds ? `<div class="fs-form"><dt>Last five</dt><dd class="form">${formCells(row.driver.id)}</dd></div>` : ""}
+      </dl>`;
+    $("#follow-line").innerHTML = followSentence(c, model);
   }
 
   function setFollow(id) {
@@ -1172,6 +1246,10 @@
     $("#follow").addEventListener("change", e => {
       if (e.target.id !== "follow-pick") return;
       setFollow(e.target.value);
+    });
+    $("#follow").addEventListener("click", e => {
+      const b = e.target.closest(".fchip");
+      if (b) setFollow(b.dataset.id);
     });
     $("#season-pick").addEventListener("change", e => {
       const url = new URL(location.href);
