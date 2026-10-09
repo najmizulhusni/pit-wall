@@ -1,0 +1,451 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Learn F1, Pit Wall</title>
+  <meta name="description" content="How Formula 1 works, in nine short animated chapters: the season, race weekends, qualifying, the start, tyres, pit strategy, safety cars, points and timing data. Built on this season's real data.">
+  <meta name="author" content="Najmi Zulhusni">
+  <meta name="color-scheme" content="dark light">
+  <meta name="theme-color" id="theme-color" content="#14171b">
+  <script>
+    (function () {
+      var t; try { t = localStorage.getItem("pitwall-theme"); } catch (e) {}
+      if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark";
+      var d = document.documentElement;
+      d.dataset.theme = t;
+      d.classList.add("js");
+      document.getElementById("theme-color").content = t === "light" ? "#f3f4f6" : "#14171b";
+    })();
+  </script>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2314171b'/%3E%3Cpath d='M7 22c3-9 6-12 9-12s4 4 9 2' stroke='%23f08a4b' stroke-width='3.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://api.openf1.org" crossorigin>
+  <link rel="preconnect" href="https://api.jolpi.ca" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,400..900&display=swap" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/learn.css">
+  <script src="js/pipeline.js" defer></script>
+  <script src="js/sources.js" defer></script>
+  <script src="js/analytics.js" defer></script>
+  <script src="js/shell.js" defer></script>
+  <script src="js/learn.js" defer></script>
+</head>
+<body class="learn-page">
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <a class="mark" href="index.html"><span class="mark-slash" aria-hidden="true"></span>Pit Wall</a>
+    <nav aria-label="Pages" class="pages">
+      <a href="index.html">Live dashboard</a>
+    </nav>
+    <a class="learn-link" href="learn.html" aria-current="page">Learn F1</a>
+    <button class="theme" id="theme" type="button" aria-label="Switch colour theme">
+      <svg class="i-sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <svg class="i-moon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.1A8.5 8.5 0 1 1 9.9 3.5a6.6 6.6 0 0 0 10.6 10.6z"/></svg>
+    </button>
+    <span class="progress" aria-hidden="true"></span>
+  </header>
+
+  <main id="main">
+    <!-- Intro -->
+    <header class="l-hero">
+      <div class="gantry intro" id="intro-lights" aria-hidden="true">
+        <i></i><i></i><i></i><i></i><i></i>
+      </div>
+      <p class="kicker"><span>Learn F1</span><span>9 chapters</span><span>About 10 minutes</span></p>
+      <h1>Formula 1,<br>explained</h1>
+      <p class="l-lede">New to F1, or want to follow a race properly? Each chapter explains one idea with a moving picture, then shows it in this season's real data. By the end, every chart on the <a href="index.html">live dashboard</a> will make sense.</p>
+      <ol class="toc" aria-label="Chapters">
+        <li><a href="#season"><b>01</b><span>The season</span><small>Rounds and two championships</small></a></li>
+        <li><a href="#weekend"><b>02</b><span>The race weekend</span><small>From first practice to the race</small></a></li>
+        <li><a href="#qualifying"><b>03</b><span>Qualifying</span><small>A knockout that sets the grid</small></a></li>
+        <li><a href="#start"><b>04</b><span>Lights out</span><small>The start and the race</small></a></li>
+        <li><a href="#tyres"><b>05</b><span>Tyres</span><small>Grip against life</small></a></li>
+        <li><a href="#strategy"><b>06</b><span>Pit stops and strategy</span><small>Race three plans yourself</small></a></li>
+        <li><a href="#safety-car"><b>07</b><span>Safety car and flags</span><small>When the race is neutralised</small></a></li>
+        <li><a href="#points"><b>08</b><span>Points and the title</span><small>How a champion is decided</small></a></li>
+        <li><a href="#timing"><b>09</b><span>Reading timing data</span><small>Purple sectors and other jargon</small></a></li>
+      </ol>
+    </header>
+
+    <div class="l-layout">
+      <nav class="rail" data-spy data-axis="y" aria-label="Chapters">
+        <a href="#season"><b>01</b>The season</a>
+        <a href="#weekend"><b>02</b>Race weekend</a>
+        <a href="#qualifying"><b>03</b>Qualifying</a>
+        <a href="#start"><b>04</b>Lights out</a>
+        <a href="#tyres"><b>05</b>Tyres</a>
+        <a href="#strategy"><b>06</b>Strategy</a>
+        <a href="#safety-car"><b>07</b>Safety car</a>
+        <a href="#points"><b>08</b>Points</a>
+        <a href="#timing"><b>09</b>Timing data</a>
+        <span class="ink" aria-hidden="true"></span>
+        <p class="score" id="quiz-score" aria-live="polite">Quick checks: 0 of 9</p>
+      </nav>
+
+      <div class="chapters">
+
+        <!-- 01 Season -->
+        <section class="chapter" id="season">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">01</span>
+            <div>
+              <h2>The season</h2>
+              <p class="ch-key">A season is a world tour. Every stop is a round, and every round hands out points.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Formula 1 runs from March to December. Each <b>round</b> is one Grand Prix weekend at one circuit, and the teams pack up and fly to the next one, often a week later.</p>
+            <p id="season-live">This season has its rounds spread across the world.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <div class="tour" id="tour" aria-label="Rounds of this season"></div>
+            <figcaption id="tour-cap">Each dot is a round. Filled dots are done; the pulsing one is next.</figcaption>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>Points from every race add up to <b>two championships</b> running at the same time. The <b>drivers' championship</b> crowns the best driver. The <b>constructors' championship</b> crowns the best team, and a team's score is simply both of its drivers' points added together.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <div class="stack" id="team-stack"></div>
+            <figcaption>The top three teams right now, split into their two drivers' points.</figcaption>
+          </figure>
+          <div class="quiz" data-answer="1" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">What is a "round" in Formula 1?</p>
+            <div class="opts"><button type="button">One lap of the circuit</button><button type="button">One Grand Prix weekend</button><button type="button">One practice session</button></div>
+            <p class="why">A round is a whole Grand Prix weekend at one circuit, practice to race.</p>
+          </div>
+          <a class="see-live" href="index.html#calendar">See every round of this season</a>
+        </section>
+
+        <!-- 02 Weekend -->
+        <section class="chapter" id="weekend">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">02</span>
+            <div>
+              <h2>The race weekend</h2>
+              <p class="ch-key">Friday is for learning, Saturday decides the order, Sunday pays the points.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Most weekends follow the same rhythm: <b>practice</b> to find the right set-up, <b>qualifying</b> to set the starting order, then the <b>race</b>. A few weekends a year are <b>sprint weekends</b>, which swap two practice sessions for a short extra race on Saturday.</p>
+          </div>
+          <figure class="fig weekend-fig" data-reveal>
+            <div class="fig-tools">
+              <div class="seg" role="tablist" aria-label="Weekend format">
+                <button role="tab" aria-selected="true" data-format="standard">Standard weekend</button>
+                <button role="tab" aria-selected="false" data-format="sprint">Sprint weekend</button>
+                <span class="seg-ink" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="days" id="days"></div>
+            <div class="session-card" id="session-card" aria-live="polite"></div>
+          </figure>
+          <p class="live-tie" id="weekend-live" data-reveal></p>
+          <div class="quiz" data-answer="1" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">Which session sets the starting grid for Sunday's race?</p>
+            <div class="opts"><button type="button">Practice 3</button><button type="button">Qualifying</button><button type="button">The sprint</button></div>
+            <p class="why">Qualifying sets the race grid. On sprint weekends, sprint qualifying sets the grid for the sprint only.</p>
+          </div>
+          <a class="see-live" href="index.html#calendar">This weekend's sessions in your time zone</a>
+        </section>
+
+        <!-- 03 Qualifying -->
+        <section class="chapter" id="qualifying">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">03</span>
+            <div>
+              <h2>Qualifying</h2>
+              <p class="ch-key">One fast lap at a time, in three rounds. The slowest are knocked out after each.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Qualifying lasts about an hour and comes in three parts. In <b>Q1</b> (18 minutes) every car sets lap times and the slowest are knocked out. <b>Q2</b> (15 minutes) knocks out the next group. The last ten fight it out in <b>Q3</b> (12 minutes). The fastest lap of all takes <b>pole position</b>: first place on the grid.</p>
+            <p>Press play to watch the latest real qualifying session unfold.</p>
+          </div>
+          <figure class="fig quali-fig" data-reveal>
+            <div class="fig-tools">
+              <div class="seg small" role="tablist" aria-label="Qualifying part" id="quali-steps">
+                <button role="tab" aria-selected="true" data-q="0">Q1</button>
+                <button role="tab" aria-selected="false" data-q="1">Q2</button>
+                <button role="tab" aria-selected="false" data-q="2">Q3</button>
+                <span class="seg-ink" aria-hidden="true"></span>
+              </div>
+              <button class="play" type="button" id="quali-play"><span class="tri" aria-hidden="true"></span>Play</button>
+            </div>
+            <p class="quali-state" id="quali-state" aria-live="polite"></p>
+            <div class="quali" id="quali"></div>
+            <figcaption id="quali-cap">Loading the latest qualifying session.</figcaption>
+          </figure>
+          <div class="quiz" data-answer="0" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">A driver is knocked out in Q1. Where do they start the race?</p>
+            <div class="opts"><button type="button">Near the back of the grid</button><button type="button">From the pit lane</button><button type="button">In the top ten</button></div>
+            <p class="why">Q1 sets the back of the grid: the cars knocked out there fill the last places, in order of their best lap.</p>
+          </div>
+          <a class="see-live" href="index.html#h2h">Compare any two drivers' fastest laps</a>
+        </section>
+
+        <!-- 04 Start -->
+        <section class="chapter" id="start">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">04</span>
+            <div>
+              <h2>Lights out</h2>
+              <p class="ch-key">Five red lights, a pause nobody can predict, then about 300 km of racing.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Cars line up in qualifying order, two by two. After a formation lap to warm the tyres, five red lights come on one by one, a second apart. After a short random pause they all go out together, and the race is on. Move before they go out and it's a jump start, which earns a penalty.</p>
+            <p>Try it. Drivers react in about two tenths of a second.</p>
+          </div>
+          <figure class="fig start-fig" data-reveal>
+            <div class="gantry game" id="gantry" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+            <button class="react" type="button" id="react">Start</button>
+            <p class="react-out" id="react-out" aria-live="polite">Press Start, then tap the big button (or press space) the moment the lights go out.</p>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>A Grand Prix covers just over <b>305 km</b>, usually 50 to 70 laps depending on the track, and can't run longer than <b>two hours</b>. In the dry, every car has to stop at least once to change tyres (chapter 5 explains why). The first car across the line when the <b>chequered flag</b> waves wins.</p>
+          </div>
+          <div class="quiz" data-answer="2" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">When does the race start?</p>
+            <div class="opts"><button type="button">When the fifth red light comes on</button><button type="button">When a green flag waves</button><button type="button">When all five red lights go out</button></div>
+            <p class="why">It's "lights out and away we go": the start is the moment all five lights go out.</p>
+          </div>
+          <a class="see-live" href="index.html#race">See how the latest race unfolded, lap by lap</a>
+        </section>
+
+        <!-- 05 Tyres -->
+        <section class="chapter" id="tyres">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">05</span>
+            <div>
+              <h2>Tyres</h2>
+              <p class="ch-key">Softer tyres are faster but wear out sooner. Every race is a trade between grip and life.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>All teams use the same supplier, Pirelli. For each race Pirelli brings three <b>dry</b> compounds, always marked the same way: <b>red soft</b>, <b>yellow medium</b> and <b>white hard</b>. When the track is wet, drivers switch to grooved tyres that clear water: green <b>intermediates</b> for a damp track and blue <b>full wets</b> for heavy rain.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <div class="tyres" id="tyres-row">
+              <div class="tyre" style="--tc:var(--soft)"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rubber" cx="50" cy="50" r="46"/><circle class="band" cx="50" cy="50" r="33"/><circle class="rim" cx="50" cy="50" r="22"/><path class="spoke" d="M50 30v40M30 50h40"/></svg><b>Soft</b><span class="bars"><span>Grip<i style="--v:.96"></i></span><span>Life<i style="--v:.35"></i></span></span></div>
+              <div class="tyre" style="--tc:var(--medium)"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rubber" cx="50" cy="50" r="46"/><circle class="band" cx="50" cy="50" r="33"/><circle class="rim" cx="50" cy="50" r="22"/><path class="spoke" d="M50 30v40M30 50h40"/></svg><b>Medium</b><span class="bars"><span>Grip<i style="--v:.78"></i></span><span>Life<i style="--v:.62"></i></span></span></div>
+              <div class="tyre hard" style="--tc:var(--hard)"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rubber" cx="50" cy="50" r="46"/><circle class="band" cx="50" cy="50" r="33"/><circle class="rim" cx="50" cy="50" r="22"/><path class="spoke" d="M50 30v40M30 50h40"/></svg><b>Hard</b><span class="bars"><span>Grip<i style="--v:.6"></i></span><span>Life<i style="--v:.92"></i></span></span></div>
+              <div class="tyre wet" style="--tc:var(--inter)"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rubber" cx="50" cy="50" r="46"/><circle class="band" cx="50" cy="50" r="33"/><circle class="rim" cx="50" cy="50" r="22"/><path class="spoke" d="M50 30v40M30 50h40"/></svg><b>Intermediate</b><small>Damp track</small></div>
+              <div class="tyre wet" style="--tc:var(--wet)"><svg viewBox="0 0 100 100" aria-hidden="true"><circle class="rubber" cx="50" cy="50" r="46"/><circle class="band" cx="50" cy="50" r="33"/><circle class="rim" cx="50" cy="50" r="22"/><path class="spoke" d="M50 30v40M30 50h40"/></svg><b>Full wet</b><small>Heavy rain</small></div>
+            </div>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>As a tyre wears, it loses grip and each lap gets a little slower. That is called <b>degradation</b>. A soft starts fastest but fades quickly; a hard starts slower but keeps going. Eventually any tyre hits a <b>cliff</b>, where grip falls away fast. That's the moment to stop for new ones.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <svg class="deg" id="deg" viewBox="0 0 640 260" role="img" aria-label="Lap time against tyre age for soft, medium and hard tyres"></svg>
+            <figcaption>How much slower each lap gets as the tyre ages, from a simplified model: the higher the line, the quicker the lap. The soft starts quickest, then falls off its cliff; the medium and hard take over.</figcaption>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>One rule shapes every dry race: each driver must use <b>at least two different dry compounds</b>. That means at least one pit stop, so tyre choice and timing become the race's main tactic.</p>
+          </div>
+          <p class="live-tie" id="tyres-live" data-reveal></p>
+          <div class="mini-stints" id="mini-stints" data-reveal></div>
+          <div class="quiz" data-answer="2" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">In a dry race, every driver must…</p>
+            <div class="opts"><button type="button">Start on soft tyres</button><button type="button">Stop exactly twice</button><button type="button">Use at least two different dry compounds</button></div>
+            <p class="why">Two different dry compounds in a dry race, which forces at least one pit stop.</p>
+          </div>
+          <a class="see-live" href="index.html#race">See every driver's tyre strategy</a>
+        </section>
+
+        <!-- 06 Strategy -->
+        <section class="chapter" id="strategy">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">06</span>
+            <div>
+              <h2>Pit stops and strategy</h2>
+              <p class="ch-key">A stop costs about 20 seconds. Fresh tyres have to win that time back.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Changing four tyres takes a crew about <b>two to three seconds</b>. The real cost is the trip through the pit lane, where there's a speed limit: in total a stop costs around <b>20 to 25 seconds</b> compared with staying out. Strategy is deciding when to pay that price, and how many times.</p>
+            <p>Below, three cars with the same pace race 56 laps on different plans. Change the tyre wear and your pit lap, then press play.</p>
+          </div>
+          <figure class="fig sim-fig" data-reveal>
+            <div class="fig-tools">
+              <div class="seg small" role="tablist" aria-label="Tyre wear">
+                <button role="tab" aria-selected="true" data-wear="low">Low tyre wear</button>
+                <button role="tab" aria-selected="false" data-wear="high">High tyre wear</button>
+                <span class="seg-ink" aria-hidden="true"></span>
+              </div>
+              <label class="slider">Car A pits on lap <b id="pit-val">26</b><input type="range" id="pit-lap" min="10" max="46" value="26"></label>
+              <button class="play" type="button" id="sim-play"><span class="tri" aria-hidden="true"></span>Play race</button>
+            </div>
+            <p class="sim-lap" id="sim-lap">Lap 0 of 56</p>
+            <div class="sim" id="sim"></div>
+            <p class="sim-result" id="sim-result" aria-live="polite"></p>
+            <figcaption>Each dot is a car, placed by how far it is behind the leader. Its colour is the tyre it's on, and a dip below the line is a pit stop. A simplified model: same car, same driver, only the tyre plan changes.</figcaption>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>Two moves come up in every race. The <b>undercut</b>: pit a lap or two before the car ahead, then use fresh tyres to lap faster while they're still out on worn ones, and come out in front once they stop. The <b>overcut</b> is the reverse: stay out longer and hope your old tyres hold on while the other car warms up its new ones.</p>
+          </div>
+          <p class="live-tie" id="pits-live" data-reveal></p>
+          <div class="quiz" data-answer="0" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">Pitting before a rival to jump ahead of them on fresher tyres is called…</p>
+            <div class="opts"><button type="button">The undercut</button><button type="button">The overcut</button><button type="button">The slipstream</button></div>
+            <p class="why">The undercut: stop first, go faster on new tyres, come out ahead when the rival stops.</p>
+          </div>
+          <a class="see-live" href="index.html#race">See the real pit stops of the latest race</a>
+        </section>
+
+        <!-- 07 Safety car -->
+        <section class="chapter" id="safety-car">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">07</span>
+            <div>
+              <h2>Safety car and flags</h2>
+              <p class="ch-key">When there's danger, the race is slowed down. That can undo a whole afternoon's work.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>After a crash or debris, marshals need the cars to slow down. There are two ways to do it. The <b>safety car</b> drives out in front of the leader and everyone queues up behind it, with no overtaking, so the gaps between cars disappear. The <b>virtual safety car</b> (VSC) has no car at all: every driver must slow to the same reduced pace, so the gaps stay roughly where they were.</p>
+            <p>Switch between the three and watch what happens to the gaps.</p>
+          </div>
+          <figure class="fig sc-fig" data-reveal>
+            <div class="fig-tools">
+              <div class="seg small" role="tablist" aria-label="Track state" id="sc-mode">
+                <button role="tab" aria-selected="true" data-mode="green">Racing</button>
+                <button role="tab" aria-selected="false" data-mode="sc">Safety car</button>
+                <button role="tab" aria-selected="false" data-mode="vsc">Virtual safety car</button>
+                <span class="seg-ink" aria-hidden="true"></span>
+              </div>
+            </div>
+            <div class="sc-wrap">
+              <svg class="sc-track" id="sc-track" viewBox="0 0 640 300" aria-label="Cars running around a simplified track"></svg>
+              <dl class="sc-read"><div><dt>Leader to last car</dt><dd id="sc-spread">–</dd></div><div><dt>Overtaking</dt><dd id="sc-pass">Allowed</dd></div></dl>
+            </div>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>That's why a safety car can change a race. A leader's 20-second cushion is gone in a few laps. Pitting also becomes cheap: with the field crawling, a stop costs roughly half the usual time, so teams often call their drivers in the moment it comes out.</p>
+          </div>
+          <p class="live-tie" id="sc-live" data-reveal></p>
+          <div class="flags" data-reveal>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#1fa84f"/></svg><b>Green</b><span>Track clear. Racing is on again.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#f2c200"/></svg><b>Yellow</b><span>Danger ahead. Slow down, no overtaking.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#e3261f"/></svg><b>Red</b><span>Session stopped. Everyone returns slowly to the pit lane.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#1f6fe0"/></svg><b>Blue</b><span>A faster car is about to lap you. Let it through.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><path d="M0 0h60v40H0z" fill="#fff"/><path d="M0 0h60L0 40z" fill="#111"/></svg><b>Black and white</b><span>A warning for unsporting driving.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" fill="#111"/><rect x=".5" y=".5" width="59" height="39" fill="none" stroke="#444"/></svg><b>Black</b><span>Disqualified. Return to the pits.</span></div>
+            <div class="flag"><svg viewBox="0 0 60 40" aria-hidden="true"><defs><pattern id="chk" width="10" height="10" patternUnits="userSpaceOnUse"><rect width="10" height="10" fill="#fff"/><rect width="5" height="5" fill="#111"/><rect x="5" y="5" width="5" height="5" fill="#111"/></pattern></defs><rect width="60" height="40" fill="url(#chk)"/></svg><b>Chequered</b><span>The session is over.</span></div>
+          </div>
+          <div class="quiz" data-answer="1" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">Under a virtual safety car, the gaps between cars…</p>
+            <div class="opts"><button type="button">Close up completely</button><button type="button">Stay roughly the same</button><button type="button">Double</button></div>
+            <p class="why">Everyone slows by the same amount, so the gaps stay roughly where they were. Only a real safety car bunches the field.</p>
+          </div>
+          <a class="see-live" href="index.html#race">See safety car periods on the latest race</a>
+        </section>
+
+        <!-- 08 Points -->
+        <section class="chapter" id="points">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">08</span>
+            <div>
+              <h2>Points and the title</h2>
+              <p class="ch-key">The top ten score in every race. The title is won when nobody can catch up any more.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>A win is worth <b>25 points</b>, and the top ten all score. Sprints pay the top eight, from 8 points down to 1. There's no bonus for the fastest lap any more; that was dropped in 2025.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <div class="ladders">
+              <div class="ladder" id="ladder-race" aria-label="Race points for positions 1 to 10"></div>
+              <div class="ladder small" id="ladder-sprint" aria-label="Sprint points for positions 1 to 8"></div>
+            </div>
+            <figcaption>Left: a Grand Prix, P1 to P10. Right: a sprint, P1 to P8.</figcaption>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>The championship is decided the moment the leader is further ahead than the points still left to win. Nobody needs to win the last race; the maths simply runs out for everyone else.</p>
+            <p id="points-live"></p>
+          </div>
+          <figure class="fig whatif-fig" data-reveal id="whatif-fig">
+            <p class="whatif-q" id="whatif-q">What if the next race finished like this?</p>
+            <div class="whatif">
+              <label><span id="wi-a-name">Leader</span><select id="wi-a"></select></label>
+              <label><span id="wi-b-name">Second</span><select id="wi-b"></select></label>
+            </div>
+            <p class="whatif-out" id="whatif-out" aria-live="polite"></p>
+          </figure>
+          <div class="quiz" data-answer="1" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">One team's drivers finish 3rd and 5th. How many constructors' points does the team score?</p>
+            <div class="opts"><button type="button">15</button><button type="button">25</button><button type="button">8</button></div>
+            <p class="why">3rd pays 15 and 5th pays 10. The team scores both: 25.</p>
+          </div>
+          <a class="see-live" href="index.html#title-race">When can this year's leader win the title?</a>
+        </section>
+
+        <!-- 09 Timing -->
+        <section class="chapter" id="timing">
+          <header class="ch-head" data-reveal>
+            <span class="ch-num" aria-hidden="true">09</span>
+            <div>
+              <h2>Reading timing data</h2>
+              <p class="ch-key">Every lap is split into three sectors, and colours tell you who is quickest where.</p>
+            </div>
+          </header>
+          <div class="ch-text" data-reveal>
+            <p>Timing screens split each lap into three <b>sectors</b>. Colours do the talking: <b class="c-pb">purple</b> means the fastest of anyone so far, <b class="c-pers">green</b> is a driver's own best, and <b class="c-slow">yellow</b> is slower than their best.</p>
+          </div>
+          <figure class="fig" data-reveal>
+            <div class="lapbar" id="lapbar">
+              <div class="sec s1"><i></i><span>Sector 1</span><b>28.412</b></div>
+              <div class="sec s2"><i></i><span>Sector 2</span><b>34.098</b></div>
+              <div class="sec s3"><i></i><span>Sector 3</span><b>31.902</b></div>
+              <div class="laptime"><span>Lap</span><b>1:34.412</b></div>
+            </div>
+            <figcaption>A lap being timed: a purple first sector, a personal best in the second, a slower third.</figcaption>
+          </figure>
+          <div class="ch-text" data-reveal>
+            <p>Add a driver's three best sectors from different laps and you get their <b>ideal lap</b>: what they could do if everything came together at once. The gap between the ideal and the real best shows how much time was left out there.</p>
+          </div>
+          <div class="gloss" data-reveal>
+            <label class="gloss-search"><span class="sr">Search the glossary</span><input type="search" id="gloss-q" placeholder="Search terms: pole, undercut, DNF…" autocomplete="off"></label>
+            <dl id="gloss"></dl>
+          </div>
+          <div class="quiz" data-answer="0" data-reveal>
+            <p class="q-k">Quick check</p>
+            <p class="q">A purple sector on the timing screen means…</p>
+            <div class="opts"><button type="button">The fastest of anyone so far</button><button type="button">The driver's own best</button><button type="button">Slower than before</button></div>
+            <p class="why">Purple is the overall best. Green is a personal best; yellow is slower.</p>
+          </div>
+          <a class="see-live" href="index.html#race">Open the pace table for the latest race</a>
+        </section>
+
+        <section class="l-done" data-reveal>
+          <p class="kicker">That's the lot</p>
+          <h2 id="done-title">You know how F1 works.</h2>
+          <p>Now watch it happen. The live dashboard has this season's standings, every race lap by lap, and the maths behind the title fight.</p>
+          <a class="learn-link big" href="index.html">Open the live dashboard</a>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <div class="foot-row">
+      <a class="mark" href="index.html"><span class="mark-slash" aria-hidden="true"></span>Pit Wall</a>
+      <p class="built">Designed and built by <b>Najmi Zulhusni</b></p>
+    </div>
+    <p class="contact"><a href="mailto:najmisapuan02@gmail.com">najmisapuan02@gmail.com</a></p>
+    <p class="stack">Vanilla JavaScript, hand-drawn SVG and two public APIs. No framework, no chart library, no build step.</p>
+    <p class="credit">Data from <a href="https://openf1.org" rel="noopener" target="_blank">OpenF1</a> and <a href="https://github.com/jolpica/jolpica-f1" rel="noopener" target="_blank">Jolpica F1</a>. Unofficial; not associated with Formula 1, the FIA or any team.</p>
+  </footer>
+</body>
+</html>

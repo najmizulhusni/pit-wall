@@ -1,0 +1,14 @@
+{
+  "name": "pit-wall",
+  "private": true,
+  "description": "Live Formula 1 data and a plain-English guide to the sport. Static site, no build step.",
+  "author": "Najmi Zulhusni <najmisapuan02@gmail.com>",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "snapshot": "node scripts/snapshot.mjs",
+    "serve": "python3 -m http.server 8080"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

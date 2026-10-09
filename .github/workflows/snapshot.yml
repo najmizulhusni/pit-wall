@@ -1,0 +1,36 @@
+name: Nightly F1 snapshot
+
+on:
+  schedule:
+    - cron: "30 2 * * *"     # 10:30 in Malaysia, after Sunday races have settled
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: snapshot
+  cancel-in-progress: true
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Pull latest race
+        run: node scripts/snapshot.mjs
+      - name: Commit if anything changed
+        run: |
+          if [ -z "$(git status --porcelain data/)" ]; then
+            echo "Snapshot unchanged"
+            exit 0
+          fi
+          git config user.name "snapshot-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/snapshot.json data/snapshot.meta.json
+          git commit -m "Snapshot $(date -u +%F)"
+          git push
