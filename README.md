@@ -20,13 +20,13 @@ Data comes from two public APIs that know nothing about each other. The page pul
 
 | Section | What it shows |
 |---|---|
-| Hero | Latest race podium and notes, the title situation, your driver, countdown to the next session, and the fastest lap replayed from raw x/y coloured by speed |
-| Standings | Drivers and constructors, last-five form, points still available and who can still win; any season since 2023 from the season picker |
-| Title analytics | When the leader can win it: earliest possible round and the margin needed over each rival, a round-by-round clinch table, a projection on current form, and where your driver stands |
-| Calendar | Every round with its winner, the next weekend's sessions in your time zone, one-click calendar export; finished rounds open their race data |
-| Head to head | Points by round, season duel, mini-sector dominance from two laps resampled to lap distance |
-| Race | Session facts, running order and gap to the winner by lap, lap times with safety car periods shaded, pace table with sectors, ideal lap and speed trap, pit lane times, tyre strategy |
-| Data feed | Live request counters, how the pipeline works, the full request log on demand |
+| Hero | Latest race: podium steps, recap, and the fastest lap replayed with a top-down car in team colours, rev lights from real RPM, gear, speed, pedals and lap clock. Below: the next weekend's countdown and sessions in your time zone, and your driver |
+| 01 Standings | Drivers and constructors side by side, timing-tower style, with last-five form and the gap to the leader; any season since 2023 |
+| 02 Title race | When the leader can win it: earliest possible round, the date on current form, a "Can they still win?" chart, the projected final table, and the road to the title round by round |
+| 03 Calendar | The whole season as a grid: winners of finished rounds (open one for its race data), the next round, calendar export |
+| 04 Head to head | Two drivers face to face: points by round, a season duel table, and their fastest laps compared corner by corner |
+| 05 Race | One session in detail: facts, running order and gap to the winner, lap times with safety car periods, pace table, pit stops, tyre strategy |
+| 06 Data feed | Live request counters, how the pipeline works, the full request log on demand |
 
 ### For fans
 

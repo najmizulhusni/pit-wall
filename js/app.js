@@ -157,13 +157,13 @@
     const out = r.results.filter(x => !x.finished).length;
     const tm = titleModel();
     const titleNote = !tm ? "" : !tm.rivals.length
-      ? `<li><span>Title</span><b>${esc(shortName(tm.lead.driver))} is champion</b></li>`
-      : tm.earliest ? `<li><span>Title</span><b>${esc(shortName(tm.lead.driver))} can clinch in ${esc(tm.earliest.r.locality)} at the earliest</b></li>` : "";
+      ? `<li class="wide"><span>Title</span><b>${esc(shortName(tm.lead.driver))} is champion</b></li>`
+      : tm.earliest ? `<li class="wide"><span>Title</span><b>${esc(shortName(tm.lead.driver))} can clinch in ${esc(tm.earliest.r.locality)} at the earliest</b></li>` : "";
     $("#hero-notes").innerHTML = [
       titleNote,
       gain && gain.gain > 0 ? `<li><span>Biggest climb</span><b>${esc(gain.driver.family)}, P${gain.grid} to P${gain.pos}</b></li>` : "",
       fl ? `<li><span>Fastest lap</span><b>${esc(fl.driver.family)}${fl.fastestTime ? `, ${esc(fl.fastestTime)}` : ""}</b></li>` : "",
-      `<li><span>Not classified as finishing</span><b>${out}</b></li>`
+      `<li><span>Did not finish</span><b>${out ? plural(out, "car") : "Everyone finished"}</b></li>`
     ].join("");
   }
 
@@ -182,18 +182,26 @@
     host.hidden = false;
     if (key !== nextKey) {
       nextKey = key;
+      const sched = `<ul class="next-sched" aria-label="Sessions this weekend, your time">${race.sessions.map(x => {
+        const cls = running && x[0] === running[0] ? "live" : x[1].getTime() + (SESSION_LEN[x[0]] || 1) * 36e5 <= now ? "past" : x[0] === next[0] ? "up" : "";
+        return `<li class="${cls}"><span>${esc(x[0])}</span><time>${whenLocal(x[1])}</time></li>`;
+      }).join("")}</ul>`;
       host.innerHTML = running
-        ? `<p class="next-k"><span class="live-dot"></span>On track now, round ${race.round}</p>
-           <p class="next-name">${esc(race.name)}</p>
-           <p class="next-when">${esc(running[0])} in ${esc(race.locality)}${next[0] !== running[0] ? `. ${esc(next[0])} next, ${whenLocal(next[1])}` : ""}</p>`
-        : `<p class="next-k">Next up, round ${race.round}</p>
-           <p class="next-name">${esc(race.name)}</p>
-           <div class="count" role="timer" aria-live="off">
-             <span><b data-u="d">0</b><small>days</small></span><span><b data-u="h">00</b><small>hrs</small></span>
-             <span><b data-u="m">00</b><small>min</small></span><span><b data-u="s">00</b><small>sec</small></span>
-           </div>
-           <p class="next-when">${esc(next[0])}, ${whenLocal(next[1])} your time</p>
-           <button class="ics" type="button" data-ics="weekend" data-round="${race.round}">${ICON_CAL}Add this weekend to your calendar</button>`;
+        ? `<div class="next-main">
+             <p class="next-k"><span class="live-dot"></span>On track now, round ${race.round}</p>
+             <p class="next-name">${esc(race.name)}</p>
+             <p class="next-when">${esc(running[0])} is running in ${esc(race.locality)}.</p>
+           </div>${sched}`
+        : `<div class="next-main">
+             <p class="next-k">Next up, round ${race.round}${race.sprint ? " · sprint weekend" : ""}</p>
+             <p class="next-name">${esc(race.name)}</p>
+             <div class="count" role="timer" aria-live="off">
+               <span><b data-u="d">0</b><small>days</small></span><span><b data-u="h">00</b><small>hrs</small></span>
+               <span><b data-u="m">00</b><small>min</small></span><span><b data-u="s">00</b><small>sec</small></span>
+             </div>
+             <p class="next-when">until ${esc(next[0].toLowerCase())}</p>
+             <button class="ics" type="button" data-ics="weekend" data-round="${race.round}">${ICON_CAL}Add this weekend to your calendar</button>
+           </div>${sched}`;
     }
     if (running) return;
     const ms = Math.max(0, next[1].getTime() - now);
@@ -201,7 +209,7 @@
     $$("[data-u]", host).forEach(b => { const v = String(parts[b.dataset.u]); if (b.textContent !== v) b.textContent = v; });
   }
 
-  /* ---------- season ---------- */
+  /* ---------- standings ---------- */
   function teamColour(teamId) {
     const d = state.standings?.rows.find(r => r.teamId === teamId);
     return d ? state.colourFor(d.driver.code, teamId) : state.colourFor(null, teamId);
@@ -217,22 +225,14 @@
     }).join("");
   }
 
-  function renderStandings(fresh) {
-    const host = $("#standings");
-    const drivers = state.table === "drivers";
-    const rows = drivers ? state.standings?.rows : state.teams?.rows;
-    if (!rows || !rows.length) return emptyState(host, "No standings yet", "The season may not have started. Standings appear after round one.");
+  /* One renderer for both tables. Bars grow and points count up once each list is on screen. */
+  function renderList(host, rows, { kind, fresh = false, cut = false }) {
+    const drivers = kind === "drivers";
+    if (!rows || !rows.length) return emptyState(host, "No standings yet", "Standings appear after the first round of the season.");
     const max = rows[0].points || 1;
     const animate = !C.reduced() && (fresh || !host.dataset.played);
-    const more = $("#more");
-    const cut = drivers && !state.showAll && rows.length > 12;
-    more.hidden = !drivers || rows.length <= 12;
-    more.textContent = state.showAll ? "Show top 10" : `Show all ${rows.length} drivers`;
-    const showForm = drivers && state.rounds;
-    host.classList.toggle("has-form", Boolean(showForm));
-    $("#standings-head").innerHTML = `<span>Pos</span><span></span><span>${drivers ? "Driver" : "Team"}</span>${showForm ? `<span class="h-form">Last five</span>` : ""}<span class="h-bar"></span><span>Pts</span>`;
-    $("#standings-head").classList.toggle("has-form", Boolean(showForm));
-
+    const showForm = drivers && Boolean(state.rounds);
+    host.classList.toggle("has-form", showForm);
     host.innerHTML = (cut ? rows.slice(0, 10) : rows).map((r, i) => {
       const colour = drivers ? state.colourFor(r.driver.code, r.teamId) : teamColour(r.teamId);
       const who = drivers
@@ -258,123 +258,120 @@
     else whenVisible(host, play);
   }
 
+  function renderStandings(fresh) {
+    const ds = state.standings?.rows, ts = state.teams?.rows;
+    const more = $("#more");
+    more.hidden = !ds || ds.length <= 12;
+    if (ds) more.textContent = state.showAll ? "Show top 10" : `Show all ${ds.length} drivers`;
+    const showForm = Boolean(state.rounds);
+    $("#standings-head").innerHTML = `<span>Pos</span><span></span><span>Driver</span>${showForm ? `<span class="h-form">Last five</span>` : ""}<span class="h-bar"></span><span>Pts</span>`;
+    $("#standings-head").classList.toggle("has-form", showForm);
+    renderList($("#standings"), ds, { kind: "drivers", fresh, cut: !state.showAll && ds?.length > 12 });
+    renderList($("#standings-teams"), ts, { kind: "teams", fresh });
+    $("#drivers-sum").textContent = ds?.length > 1 ? `${shortName(ds[0].driver)} leads by ${fmtPts(ds[0].points - ds[1].points)}` : "";
+    $("#teams-sum").textContent = ts?.length > 1 ? `${ts[0].team} lead by ${fmtPts(ts[0].points - ts[1].points)}` : "";
+  }
+
   function seasonKicker() {
     if (!state.standings) return;
     const total = state.schedule?.length;
     $("#season-kicker").textContent = `${state.standings.season} season, after round ${state.standings.round}${total ? ` of ${total}` : ""}`;
   }
 
-  /*
-    Title maths. Assumes the leader scores nothing from here on and a rival wins everything,
-    which is the only question that matters for "still in it".
-  */
-  function renderTitle() {
-    const host = $("#title-fight");
-    const drivers = state.table === "drivers";
-    const rows = drivers ? state.standings?.rows : state.teams?.rows;
-    if (!rows?.length || !state.schedule) { host.innerHTML = ""; return; }
-    const left = state.schedule.filter(r => r.round > state.standings.round);
-    const perRace = drivers ? 25 : 43, perSprint = drivers ? 8 : 15;
-    const worth = r => perRace + (r.sprint ? perSprint : 0);
-    const max = left.reduce((n, r) => n + worth(r), 0);
-    const lead = rows[0];
-    const leadName = drivers ? lead.driver.family : lead.team;
-    const nameOf = r => drivers ? r.driver.family : r.team;
-    const alive = rows.filter(r => lead.points - r.points <= max);
-    const rivals = alive.length - 1;
-    const sprints = left.filter(r => r.sprint).length;
-
-    // Earliest round the leader could seal it: they win everything, the nearest rival scores nothing.
-    let clinch = null;
-    if (rivals && rows[1]) {
-      let margin = lead.points - rows[1].points, remaining = max;
-      for (const r of left) {
-        margin += worth(r); remaining -= worth(r);
-        if (margin > remaining) { clinch = r; break; }
-      }
-    }
-
-    host.innerHTML = `
-      <p class="kicker">${drivers ? "Drivers'" : "Constructors'"} title</p>
-      <p class="big"><b data-v="${max}">${max}</b> points still on the table</p>
-      <p class="sub">${left.length ? `${plural(left.length, "round")} left${sprints ? `, ${plural(sprints, "sprint")} among them` : ""}. ` : "Season complete. "}
-        ${!left.length ? `${esc(leadName)} ${drivers ? "is" : "are"} champion${drivers ? "" : "s"}.`
-          : rivals ? `${plural(rivals, drivers ? "driver" : "team")} can still catch ${esc(leadName)}.`
-          : `${esc(leadName)} cannot be caught.`}</p>
-      ${max ? `<ol class="reach">${alive.slice(0, 6).map((r, i) => {
-        const gap = lead.points - r.points;
-        const colour = drivers ? state.colourFor(r.driver.code, r.teamId) : teamColour(r.teamId);
-        return `<li style="--c:${colour};--i:${i}">
-          <span class="nm">${esc(nameOf(r))}</span>
-          <span class="track-bar"><i style="--w:${Math.max(0.015, Math.min(1, gap / max)).toFixed(4)}"></i></span>
-          <span class="gap">${i ? `−${fmtPts(gap)}` : "Leader"}</span></li>`;
-      }).join("")}</ol>
-      <p class="note">Bar length is the deficit as a share of the points left. Past the end, the title is gone.</p>` : ""}
-      ${clinch && !drivers ? `<p class="clinch"><span>Earliest clinch</span><b>Round ${clinch.round}, ${esc(clinch.locality)}</b><small>If ${esc(leadName)} ${drivers ? "wins" : "finish one-two in"} every race until then and ${esc(nameOf(rows[1]))} ${drivers ? "scores" : "score"} nothing.</small></p>` : ""}`;
-  }
-
-  /* ---------- title analytics ---------- */
+  /* ---------- title race ---------- */
   const shortName = d => `${d.given.split(" ").at(-1)} ${d.family}`;
-
   const titleModel = () => A.title({ standings: state.standings, schedule: state.schedule, rounds: state.rounds });
 
   function renderTitleRace() {
-    const panel = $("#title-race");
     const tm = titleModel();
-    if (!tm || !tm.left.length) { panel.hidden = true; return; }
-    panel.hidden = false;
+    const grid = $(".tr-grid"), road = $(".road-panel");
+    if (!tm) { $("#tr-answers").innerHTML = ""; grid.hidden = road.hidden = true; return; }
     const { lead, rivals, steps, earliest, field, projClinch, max } = tm;
     const who = shortName(lead.driver), fam = lead.driver.family;
     const colour = r => state.colourFor(r.driver.code, r.teamId);
     const when = r => r.start ? dateShort(r.start) : "";
     const span = n => n === 1 ? "in the next round" : `over the next ${n} rounds`;
+    const p2 = tm.rows[1];
 
-    $("#tr-q").textContent = rivals.length ? `When can ${who} win the title?` : `${who} is champion`;
+    // Season over, or nobody left who can catch the leader.
     if (!rivals.length) {
-      $("#tr-answers").innerHTML = `<div class="ans"><span>Decided</span><b>${esc(fam)} cannot be caught</b><small>No one is within ${max} points, the most still available.</small></div>`;
-      $("#tr-clinch").innerHTML = ""; $("#tr-proj").innerHTML = ""; $("#tr-note").textContent = "";
+      $("#tr-q").textContent = `${who}, champion`;
+      $("#tr-answers").innerHTML = `
+        <div class="ans hl"><span>${tm.left.length ? "Decided early" : "Champion"}</span><b>${esc(who)}</b><small>${esc(lead.team)}</small></div>
+        <div class="ans"><span>Winning margin</span><b>${p2 ? `${fmtPts(lead.points - p2.points)} points` : "–"}</b><small>${p2 ? `Over ${esc(p2.driver.family)}` : ""}</small></div>
+        <div class="ans"><span>Wins</span><b>${lead.wins}</b><small>${fmtPts(lead.points)} points in total</small></div>`;
+      grid.hidden = road.hidden = true;
+      $("#tr-mine").hidden = true;
       return;
     }
+    grid.hidden = road.hidden = false;
+    $("#tr-q").textContent = `When can ${who} win it?`;
 
     const binding = earliest ? earliest.needs.filter(n => n.need > 0) : [];
     const k = earliest ? steps.indexOf(earliest) + 1 : 0;
-    const p2 = rivals[0], p2f = field.find(f => f.row === p2), lf = field.find(f => f.row === lead);
+    const p2f = field.find(f => f.row === p2), lf = field.find(f => f.row === lead);
     let form;
-    if (!tm.hasForm || !projClinch) form = `<span>On current form</span><b>Loading results</b>`;
-    else if (projClinch.who !== lead) form = `<span>On current form</span><b>${esc(projClinch.who.driver.family)} takes it</b><small>Recent form says the lead does not hold. ${esc(projClinch.who.driver.family)} would seal it in ${esc(projClinch.step.r.locality)}.</small>`;
-    else if (projClinch.step === steps.at(-1)) form = `<span>On current form</span><b>The final round</b><small>${esc(fam)} stays ahead, but not clear until ${esc(projClinch.step.r.locality)}.</small>`;
-    else form = `<span>On current form</span><b>${esc(projClinch.step.r.locality)}, ${when(projClinch.step.r)}</b><small>${esc(fam)} averages ${lf.race.toFixed(1)} points a race over the last five, ${esc(p2.driver.family)} ${p2f.race.toFixed(1)}.</small>`;
+    if (!tm.hasForm || !projClinch) form = `<span>On current form</span><b>Working it out</b><small>Needs this season's results.</small>`;
+    else if (projClinch.who !== lead) form = `<span>On current form</span><b>${esc(projClinch.who.driver.family)} takes it</b><small>Recent results say the lead won't hold.</small>`;
+    else if (projClinch.step === steps.at(-1)) form = `<span>On current form</span><b>The final round</b><small>${esc(fam)} stays ahead but isn't clear until ${esc(projClinch.step.r.locality)}.</small>`;
+    else form = `<span>On current form</span><b>${esc(projClinch.step.r.locality)}, ${when(projClinch.step.r)}</b><small>${esc(fam)} averages ${lf.race.toFixed(1)} points a race over the last five; ${esc(p2.driver.family)} ${p2f ? p2f.race.toFixed(1) : "–"}.</small>`;
 
     $("#tr-answers").innerHTML = `
-      <div class="ans"><span>Earliest possible</span>${earliest
-        ? `<b>${esc(earliest.r.locality)}, ${when(earliest.r)}</b><small>Round ${earliest.r.round}. ${binding.length ? `${esc(fam)} must outscore ${binding.map(n => `${esc(n.rv.driver.family)} by ${n.need}`).join(" and ")} ${span(k)}.` : "Any result will do."}</small>`
+      <div class="ans hl"><span>Earliest possible</span>${earliest
+        ? `<b>${esc(earliest.r.locality)}, ${when(earliest.r)}</b><small>If ${esc(fam)} outscores ${binding.map(n => `${esc(n.rv.driver.family)} by ${n.need}`).join(" and ")} ${span(k)}.</small>`
         : `<b>Not this season</b><small>The gap can't be closed in time.</small>`}</div>
       <div class="ans">${form}</div>
-      <div class="ans"><span>Lead today</span><b>${fmtPts(lead.points - p2.points)} points</b><small>Over ${esc(p2.driver.family)}, with ${max} still available.</small></div>`;
+      <div class="ans"><span>Lead today</span><b>${fmtPts(lead.points - p2.points)} points</b><small>Over ${esc(p2.driver.family)}, with ${max} still to be won.</small></div>`;
 
-    const shown = rivals.slice(0, 2);
-    $("#tr-clinch").innerHTML = `<thead><tr><th>Round</th><th class="num" title="Points still available after this round">Left</th>${shown.map(r => `<th class="num" title="Points ${esc(fam)} must outscore ${esc(r.driver.family)} by, from now to this round">vs ${esc(r.driver.code)}</th>`).join("")}<th>Status</th></tr></thead>
-      <tbody>${steps.map(s => {
-        const status = projClinch?.step === s && projClinch.who === lead ? ["proj", "On form"] : s.decided ? ["done", "Lead enough"] : s.possible ? ["ok", "Possible"] : ["no", "Too soon"];
-        return `<tr class="${s === earliest ? "first" : ""}"><td><b>${esc(s.r.locality)}</b><small>R${s.r.round}${s.r.sprint ? ", sprint" : ""} · ${when(s.r)}</small></td>
-          <td class="num">${s.remaining}</td>
-          ${shown.map(r => { const n = s.needs.find(x => x.rv === r).need; return `<td class="num">${n ? n : "–"}</td>`; }).join("")}
-          <td><span class="pill ${status[0]}">${status[1]}</span></td></tr>`;
-      }).join("")}</tbody>`;
+    // Can they still win? Points now (solid) plus everything still available (striped), against the leader's line.
+    const pool = tm.rows.slice(0, 8);
+    const scale = Math.max(...pool.map(r => r.points + max), 1);
+    const lx = lead.points / scale;
+    $("#tr-reach").innerHTML = `<div class="r2-head" style="--lx:${lx.toFixed(4)}"><span></span><span class="r2-axis"><em>${esc(fam)} now: ${fmtPts(lead.points)}</em></span><span></span></div>` +
+      pool.map((r, i) => {
+        const alive = r === lead || lead.points - r.points <= max;
+        return `<div class="r2-row${alive ? "" : " out"}" style="--c:${colour(r)};--i:${i};--lx:${lx.toFixed(4)}">
+          <span class="r2-name">${esc(r.driver.family)}</span>
+          <span class="r2-track"><i class="now" style="width:${(r.points / scale * 100).toFixed(2)}%"></i><i class="left" style="left:${(r.points / scale * 100).toFixed(2)}%;width:${(max / scale * 100).toFixed(2)}%"></i></span>
+          <span class="r2-val">${r === lead ? "Leader" : alive ? `−${fmtPts(lead.points - r.points)}` : "Out"}</span>
+        </div>`;
+      }).join("");
+    $("#tr-reach-note").textContent = `Solid: points now. Striped: the ${max} points still available. A driver whose striped bar can't reach the line can no longer win; ${plural(rivals.length, "driver")} still can.`;
 
     const topF = field.slice(0, 5);
     const maxProj = Math.max(...topF.map(f => f.pts), 1);
-    $("#tr-proj").innerHTML = `<thead><tr><th>Driver</th><th class="num">Now</th><th class="num">Avg / race</th><th>Projected</th></tr></thead>
+    $("#tr-proj").innerHTML = `<thead><tr><th>Driver</th><th class="num">Now</th><th class="num">Per race</th><th>Projected</th></tr></thead>
       <tbody>${topF.map((f, i) => `<tr style="--c:${colour(f.row)};--i:${i}">
         <td><span class="tc"></span><b>${esc(f.row.driver.family)}</b></td>
         <td class="num">${fmtPts(f.row.points)}</td>
         <td class="num">${f.race.toFixed(1)}</td>
         <td><span class="proj"><i style="--w:${(f.pts / maxProj).toFixed(4)}"></i><b>${Math.round(f.pts)}</b></span></td></tr>`).join("")}</tbody>`;
+
+    // Road to the title: every remaining round, and what it would take to clinch there.
+    $("#road-title").textContent = `Road to the title: where ${fam} could clinch`;
+    $("#tr-road").style.setProperty("--n", steps.length);
+    $("#tr-road").innerHTML = steps.map((s, i) => {
+      const onForm = projClinch?.step === s && projClinch.who === lead;
+      const kind = onForm ? "form" : s.decided ? "done" : s.possible ? "ok" : "no";
+      const need = s.needs.filter(n => n.need > 0);
+      const label = { done: "Lead already enough", form: "Clinches on current form", ok: "Possible", no: "Too soon" }[kind];
+      const detail = kind === "no" ? "Even winning every race until then wouldn't make it safe."
+        : s.decided ? `If ${esc(fam)} simply matches the rivals from now${onForm ? ", which recent form says is likely" : ""}.`
+        : `If ${esc(fam)} outscores ${need.map(n => `${esc(n.rv.driver.family)} by ${n.need}`).join(" and ")} by then.`;
+      return `<li class="node ${kind}" style="--i:${i}">
+        <span class="dot" aria-hidden="true"></span>
+        <b>${esc(s.r.locality)}</b>
+        <small>R${s.r.round} · ${when(s.r)}${s.r.sprint ? " · sprint" : ""}</small>
+        <em>${label}</em>
+        <p>${detail}</p>
+      </li>`;
+    }).join("");
+    $("#tr-note").textContent = "Grands Prix pay 25 points to the winner and sprints 8. A driver is champion once nobody can catch up, even by winning everything left. Ties on points are ignored here; the FIA splits them on wins.";
+
     const mineC = A.chances(tm, state.follow);
     const mineLine = $("#tr-mine");
     mineLine.hidden = !mineC || mineC.kind === "leader";
     if (!mineLine.hidden) mineLine.innerHTML = `<span>Your driver</span>${followSentence(mineC, tm)}`;
-    $("#tr-note").textContent = `"Left" is the points still available after that round. The "vs" columns are how many more points ${fam} must score than that driver, from now until that round, to make the title safe there. "Lead enough" means the current lead already covers it, as long as ${fam} matches that driver from here. Grands Prix are worth 25, sprints 8; ties are ignored.`;
   }
 
   /* ---------- calendar ---------- */
@@ -401,34 +398,35 @@
     const remaining = (state.upcoming || []).some(r => r.sessions.some(x => x[1].getTime() > now));
     $("#cal-ics").hidden = state.mode?.mode === "archive" || !remaining;
 
-    host.innerHTML = state.schedule.map(r => {
+    host.innerHTML = state.schedule.map((r, i) => {
       const isDone = r.start && r.start.getTime() + 3 * 36e5 <= now, isNext = r === next;
       const res = state.rounds?.find(x => x.round === r.round)?.rows.find(x => x.pos === 1)
         || (state.last?.round === r.round ? state.last.results[0] : null);
-      const colour = res ? state.colourFor(res.driver.code, res.teamId) : "transparent";
+      const colour = res ? state.colourFor(res.driver.code, res.teamId) : "var(--line)";
       const sess = isDone && raceSessionFor(r);
+      const foot = res ? `<span class="won"><i></i><b>${esc(res.driver.code)}</b>${esc(res.driver.family)}</span>`
+        : isNext ? `<span class="soon">Next up</span>`
+        : isDone ? `<span class="won muted">Result pending</span>`
+        : `<span class="gp">${esc(r.name.replace(/ Grand Prix$/, " GP"))}</span>`;
       const body = `
         <span class="rn">R${r.round}${r.sprint ? `<em>Sprint</em>` : ""}</span>
         <b class="loc">${esc(r.locality)}</b>
-        <span class="gp">${esc(r.name)}</span>
         <time>${weekend(r)}</time>
-        ${res ? `<span class="won"><i></i>${esc(res.driver.family)}</span>` : isDone ? `<span class="won muted">Result pending</span>` : ""}
-        ${isNext ? `<ul class="sched">${r.sessions.map(s => `<li class="${s[1].getTime() < now ? "past" : ""}"><span>${esc(s[0])}</span><time>${whenLocal(s[1])}</time></li>`).join("")}</ul>` : ""}
-        ${sess ? `<span class="go">Race data</span>` : ""}`;
+        ${foot}`;
       const cls = `rd${isDone ? " is-done" : ""}${isNext ? " is-next" : ""}`;
-      return `<li class="${cls}" style="--c:${colour}">${sess
-        ? `<button type="button" data-session="${sess.session_key}" aria-label="Open race data for round ${r.round}, ${esc(r.name)}">${body}</button>`
+      return `<li class="${cls}" style="--c:${colour};--i:${i}">${sess
+        ? `<button type="button" data-session="${sess.session_key}" title="Open the ${esc(r.name)} in the Race section">${body}<span class="go" aria-hidden="true">→</span></button>`
         : `<div>${body}</div>`}</li>`;
     }).join("");
 
-    // Open the strip on the latest result and the next round. Set scrollLeft directly so the page never jumps.
+    // On narrow screens the calendar is a strip: open it on the latest result and the next round.
     if (!calPlaced) {
       const wrap = host.parentElement;
-      const next = $(".rd.is-next", host), target = next?.previousElementSibling || next || $$(".rd.is-done", host).at(-1);
-      if (target) {
+      const nextEl = $(".rd.is-next", host), target = nextEl?.previousElementSibling || nextEl || $$(".rd.is-done", host).at(-1);
+      if (target && wrap.scrollWidth > wrap.clientWidth) {
         wrap.scrollLeft = Math.max(0, target.getBoundingClientRect().left - wrap.getBoundingClientRect().left + wrap.scrollLeft - parseFloat(getComputedStyle(wrap).paddingLeft));
-        calPlaced = true;
       }
+      calPlaced = true;
     }
   }
 
@@ -436,7 +434,7 @@
   function fillPicks() {
     const rows = state.standings?.rows || [];
     if (!rows.length) return;
-    const opts = rows.map(r => `<option value="${esc(r.driver.id)}">${r.pos ?? ""}. ${esc(r.driver.given)} ${esc(r.driver.family)}, ${esc(r.team)}</option>`).join("");
+    const opts = rows.map(r => `<option value="${esc(r.driver.id)}">${esc(shortName(r.driver))}</option>`).join("");
     $("#pick-a").innerHTML = opts;
     $("#pick-b").innerHTML = opts;
     if (!state.picked) {
@@ -506,6 +504,8 @@
     const p = pair();
     if (!p) return;
     const { A, B, ca, cb, dashB } = p;
+    $("#vs-a").textContent = `P${A.pos} · ${fmtPts(A.points)} pts · ${A.team}`;
+    $("#vs-b").textContent = `P${B.pos} · ${fmtPts(B.points)} pts · ${B.team}`;
 
     const pointsHost = $("#points-chart");
     if (!state.rounds) skeleton(pointsHost, 300);
@@ -515,7 +515,7 @@
           { id: "a", label: A.driver.family, colour: ca, points: seasonLine(A.driver.id) },
           { id: "b", label: B.driver.family, colour: cb, dashed: dashB, points: seasonLine(B.driver.id) }
         ],
-        xMin: 0, yMin: 0, height: 300, animate: anim, aria: "Cumulative points by round",
+        xMin: 0, yMin: 0, height: 360, animate: anim, aria: "Cumulative points by round",
         xFmt: (v, tip) => tip ? (v ? `After round ${v}` : "Season start") : (v === 0 ? "Start" : Number.isInteger(v) ? `R${v}` : ""),
         yFmt: (v, tip) => tip ? `${fmtPts(v)} pts` : v,
         xLabel: "Round"
@@ -812,7 +812,7 @@
     $$("#chips .chip").forEach(b => b.setAttribute("aria-pressed", String(state.focus.has(Number(b.dataset.n)))));
     $$("#pace tbody tr").forEach(tr => tr.classList.toggle("hi", state.focus.has(Number(tr.dataset.n))));
     $$("#pits li").forEach(li => li.classList.toggle("hi", state.focus.has(Number(li.dataset.n))));
-    $$("#stints .stint-row").forEach(r => r.classList.toggle("dim", state.focus.size > 0 && !state.focus.has(Number(r.dataset.n))));
+    $$("#stints .stint-row").forEach(r => r.classList.toggle("hi", state.focus.has(Number(r.dataset.n))));
     $("#clear-focus").hidden = !state.focus.size;
     $("#focus-label").textContent = state.focus.size ? `Highlighting ${state.focus.size}` : "Highlight";
     charts.trace?.setFocus(state.focus);
@@ -946,7 +946,7 @@
         const name = c.charAt(0) + c.slice(1).toLowerCase();
         return `<i data-c="${c}" style="--tc:${COMPOUND[c] || "var(--dust)"};left:${((st - 1) / maxLap) * 100}%;width:${((en - st + 1) / maxLap) * 100}%" title="${name}, laps ${st} to ${en}${s.tyre_age_at_start ? `, ${s.tyre_age_at_start} laps old at fitting` : ""}"></i>`;
       }).join("");
-      return `<div class="stint-row${state.focus.size && !state.focus.has(n) ? " dim" : ""}" data-n="${n}" style="--i:${row}"><b>${esc(code(n))}</b><div class="lane">${segs}</div></div>`;
+      return `<div class="stint-row${state.focus.has(n) ? " hi" : ""}" data-n="${n}" style="--i:${row}"><b>${esc(code(n))}</b><div class="lane">${segs}</div></div>`;
     }).join("");
     const step = maxLap > 40 ? 10 : 5;
     const ticks = [1]; for (let l = step; l <= maxLap; l += step) ticks.push(l);
@@ -1013,7 +1013,7 @@
       renderPace();
       renderPits();
       applyFocus();
-      if (withHero) { renderStandings(false); renderTitle(); renderTitleRace(); renderHeroRace(); renderCalendar(); renderH2H(false); }
+      if (withHero) { renderStandings(false); renderTitleRace(); renderHeroRace(); renderCalendar(); renderH2H(false); }
       renderCompare();
       S.stints(key).then(st => my === sessionSeq && renderStints(st)).catch(e => emptyState($("#stints"), "Tyre data unavailable", errText(e)));
       S.weather(key).then(w => my === sessionSeq && renderConditions(w)).catch(() => renderConditions(null));
@@ -1041,7 +1041,6 @@
     seasonKicker();
     renderHeroRace();
     if (!lr && results[2].status === "rejected") $("#hero-notes").innerHTML = `<li><span>${esc(errText(results[2].reason))}</span></li>`;
-    renderTitle();
     renderTitleRace();
     renderNext();
     if (sc) renderCalendar(); else emptyState($("#cal"), "Couldn't load the calendar", errText(results[3].reason));
@@ -1200,8 +1199,7 @@
       state.table = b.dataset.table;
       $$("#season .seg button").forEach(x => x.setAttribute("aria-selected", String(x === b)));
       segInk(b.parentElement);
-      renderStandings(true);
-      renderTitle();
+      $("#champ-grid").dataset.show = state.table;          // narrow screens show one table at a time
     }));
     $$("#trace-panel .seg button").forEach(b => b.addEventListener("click", () => {
       if (state.traceMode === b.dataset.trace) return;

@@ -50,11 +50,12 @@
   <header class="topbar">
     <a class="mark" href="#top"><span class="mark-slash" aria-hidden="true"></span>Pit Wall</a>
     <nav aria-label="Sections" data-spy>
-      <a href="#season">Season</a>
+      <a href="#season">Standings</a>
+      <a href="#title">Title race</a>
       <a href="#calendar">Calendar</a>
       <a href="#h2h">Head to head</a>
       <a href="#race">Race</a>
-      <a href="#feed-section">Data feed</a>
+      <a href="#feed-section">Data</a>
       <span class="ink" aria-hidden="true"></span>
     </nav>
     <a class="learn-link" href="learn.html">Learn F1</a>
@@ -76,7 +77,9 @@
       <div class="hero-copy">
         <p class="kicker" id="hero-kicker"><span class="sk w8"></span></p>
         <h1 class="race-name" id="hero-title"><span class="sk w12"></span><span class="sk w9"></span></h1>
-        <ol class="podium" id="hero-podium" aria-label="Podium"></ol>
+        <ol class="podium" id="hero-podium" aria-label="Podium">
+          <li class="step s2 sk-step"></li><li class="step s1 sk-step"></li><li class="step s3 sk-step"></li>
+        </ol>
         <ul class="hero-notes" id="hero-notes"></ul>
       </div>
 
@@ -117,94 +120,109 @@
       </div>
     </div>
 
-    <!-- Season -->
+    <!-- 01 Standings -->
     <section class="block" id="season">
       <div class="block-head" data-reveal>
         <p class="kicker" id="season-kicker">Championship</p>
         <h2><span class="sec-num" aria-hidden="true">01</span>Standings</h2>
+        <p class="lede">Every race adds points to two tables: one for drivers, one for teams, where both of a team's cars count. <a class="learn-ref" href="learn.html#season">How the championship works</a></p>
         <div class="head-tools">
           <label class="season-pick"><span class="sr">Season</span><select id="season-pick"><option value="">This season</option></select></label>
-          <div class="seg" role="tablist" aria-label="Standings type">
+          <div class="seg only-narrow" role="tablist" aria-label="Standings type">
             <button role="tab" aria-selected="true" data-table="drivers">Drivers</button>
-            <button role="tab" aria-selected="false" data-table="teams">Constructors</button>
+            <button role="tab" aria-selected="false" data-table="teams">Teams</button>
             <span class="seg-ink" aria-hidden="true"></span>
           </div>
         </div>
       </div>
-      <div class="season-grid">
-        <div data-reveal>
+      <div class="champ-grid" id="champ-grid" data-show="drivers">
+        <div class="panel champ" data-table="drivers" data-reveal>
+          <div class="panel-head"><h3>Drivers</h3><p class="panel-sum" id="drivers-sum"></p></div>
           <div class="standings-head" id="standings-head" aria-hidden="true"></div>
           <ol class="standings" id="standings" aria-live="polite"></ol>
           <button class="more" id="more" type="button" hidden>Show all</button>
         </div>
-        <aside class="title-fight" id="title-fight" data-reveal style="--d:120ms"></aside>
-      </div>
-
-      <div class="panel title-race" id="title-race" data-reveal hidden>
-        <p class="kicker">Title analytics</p>
-        <h3 class="tr-q" id="tr-q">When can the leader win it?</h3>
-        <div class="tr-answers" id="tr-answers"></div>
-        <p class="tr-mine" id="tr-mine" hidden></p>
-        <div class="tr-grid">
-          <div>
-            <h4>Clinch scenarios, round by round</h4>
-            <div class="table-wrap"><table class="tr-table" id="tr-clinch"></table></div>
-          </div>
-          <div>
-            <h4>Projection on current form</h4>
-            <div class="table-wrap"><table class="tr-table" id="tr-proj"></table></div>
-          </div>
+        <div class="panel champ" data-table="teams" data-reveal style="--d:100ms">
+          <div class="panel-head"><h3>Constructors</h3><p class="panel-sum" id="teams-sum"></p></div>
+          <div class="standings-head teams" aria-hidden="true"><span>Pos</span><span></span><span>Team</span><span></span><span>Pts</span></div>
+          <ol class="standings teams" id="standings-teams" aria-live="polite"></ol>
         </div>
-        <p class="note" id="tr-note"></p>
-        <a class="explain" href="learn.html#points">How points and the title work</a>
       </div>
     </section>
 
-    <!-- Calendar -->
+    <!-- 02 Title race -->
+    <section class="block" id="title">
+      <div class="block-head" data-reveal>
+        <p class="kicker">Title race</p>
+        <h2><span class="sec-num" aria-hidden="true">02</span><span id="tr-q">Who can still win?</span></h2>
+        <p class="lede">The title is decided the moment the leader is further ahead than the points still left to win. <a class="learn-ref" href="learn.html#points">How points work</a></p>
+      </div>
+      <div class="tr-answers" id="tr-answers" data-reveal></div>
+      <p class="tr-mine" id="tr-mine" hidden></p>
+      <div class="tr-grid">
+        <div class="panel" data-reveal>
+          <div class="panel-head"><h3>Can they still win?</h3></div>
+          <div class="reach2" id="tr-reach"></div>
+          <p class="note" id="tr-reach-note"></p>
+        </div>
+        <div class="panel" data-reveal style="--d:100ms">
+          <div class="panel-head"><h3>Final table on current form</h3></div>
+          <div class="table-wrap"><table class="tr-table" id="tr-proj"></table></div>
+          <p class="note">Each driver's average from the last five races, plus their sprint average, carried through the rounds left. A trend, not a prediction.</p>
+        </div>
+      </div>
+      <div class="panel road-panel" data-reveal>
+        <div class="panel-head"><h3 id="road-title">Road to the title</h3></div>
+        <ol class="road" id="tr-road"></ol>
+        <p class="note" id="tr-note"></p>
+      </div>
+    </section>
+
+    <!-- 03 Calendar -->
     <section class="block" id="calendar">
       <div class="block-head" data-reveal>
         <p class="kicker" id="cal-kicker">Calendar</p>
-        <h2><span class="sec-num" aria-hidden="true">02</span>Rounds</h2>
+        <h2><span class="sec-num" aria-hidden="true">03</span>Rounds</h2>
+        <p class="lede">Each round is one Grand Prix weekend. Finished rounds show the winner; open one to see that race in detail. <a class="learn-ref" href="learn.html#weekend">What happens on a race weekend</a></p>
         <div class="head-tools">
           <div class="cal-progress" id="cal-progress"></div>
-          <button class="ics" type="button" id="cal-ics" data-ics="season" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Add the rest of the season to your calendar</button>
+          <button class="ics" type="button" id="cal-ics" data-ics="season" hidden><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>Add the season to your calendar</button>
         </div>
       </div>
       <div class="cal-wrap" data-reveal>
         <ol class="cal" id="cal" aria-label="Season calendar"></ol>
       </div>
-      <p class="note" data-reveal>Finished rounds open their race data in the Race section. <a class="explain inline" href="learn.html#weekend">What happens on a race weekend</a></p>
     </section>
 
-    <!-- Head to head -->
+    <!-- 04 Head to head -->
     <section class="block" id="h2h">
       <div class="block-head" data-reveal>
         <p class="kicker">Season duel</p>
-        <h2><span class="sec-num" aria-hidden="true">03</span>Head to head</h2>
-        <p class="lede">Pick any two drivers. Season numbers come from Jolpica, the lap comparison from OpenF1 telemetry.</p>
+        <h2><span class="sec-num" aria-hidden="true">04</span>Head to head</h2>
+        <p class="lede">Pick any two drivers to compare their seasons, and their fastest laps corner by corner. <a class="learn-ref" href="learn.html#timing">Reading timing data</a></p>
       </div>
-      <div class="pick" data-reveal>
-        <label class="who a"><span>Driver A</span><select id="pick-a"></select></label>
+      <div class="vs-head" data-reveal>
+        <label class="vs-card a"><span class="vs-k">Driver A</span><select id="pick-a"></select><span class="vs-meta" id="vs-a"></span></label>
         <span class="vs" aria-hidden="true">vs</span>
-        <label class="who b"><span>Driver B</span><select id="pick-b"></select></label>
+        <label class="vs-card b"><span class="vs-k">Driver B</span><select id="pick-b"></select><span class="vs-meta" id="vs-b"></span></label>
       </div>
 
       <div class="h2h-grid">
         <div class="panel" data-reveal>
-          <h3>Points, round by round</h3>
+          <div class="panel-head"><h3>Points, round by round</h3></div>
           <div class="chart-host" id="points-chart"></div>
         </div>
         <div class="panel" data-reveal style="--d:100ms">
-          <h3>Season duel</h3>
+          <div class="panel-head"><h3>Season duel</h3></div>
           <p class="duel-key" id="duel-key"></p>
           <dl class="duel" id="duel"></dl>
         </div>
       </div>
 
       <div class="panel compare" data-reveal>
-        <div class="compare-head">
+        <div class="panel-head">
           <h3 id="cmp-title">Fastest laps compared</h3>
-          <p class="note" id="cmp-note"></p>
+          <p class="panel-sum" id="cmp-note"></p>
         </div>
         <div class="compare-grid">
           <svg id="dom-track" class="track small" aria-label="Track split into mini-sectors, coloured by the quicker driver"></svg>
@@ -216,12 +234,15 @@
       </div>
     </section>
 
-    <!-- Race -->
+    <!-- 05 Race -->
     <section class="block" id="race">
       <div class="block-head" data-reveal>
         <p class="kicker" id="race-kicker">Session</p>
-        <h2><span class="sec-num" aria-hidden="true">04</span><span id="race-title">Race</span></h2>
-        <label class="session-pick"><span class="sr">Session</span><select id="session"></select></label>
+        <h2><span class="sec-num" aria-hidden="true">05</span><span id="race-title">Race</span></h2>
+        <p class="lede">One session in detail: who led, how the gaps moved, who was quickest where, and how each driver used their tyres. <a class="learn-ref" href="learn.html#start">How a race works</a></p>
+        <div class="head-tools">
+          <label class="session-pick"><span class="sr">Session</span><select id="session"></select></label>
+        </div>
       </div>
       <p class="conditions" id="conditions"></p>
       <dl class="facts" id="facts" data-reveal></dl>
@@ -243,43 +264,40 @@
         </div>
         <div class="chart-host" id="trace-chart"></div>
         <p class="note" id="trace-note"></p>
-        <a class="explain" href="learn.html#safety-car">What a safety car does to a race</a>
       </div>
 
       <div class="panel" data-reveal>
-        <h3>Lap times</h3>
+        <div class="panel-head"><h3>Lap times</h3><a class="learn-ref" href="learn.html#safety-car">Safety cars</a></div>
         <div class="chart-host" id="lap-chart"></div>
         <p class="note">Pit-out laps and laps more than 8% off a driver's median are left out. Shaded laps were run behind the safety car or under a virtual safety car.</p>
       </div>
 
       <div class="race-grid">
         <div class="panel" data-reveal>
-          <h3>Pace</h3>
+          <div class="panel-head"><h3>Pace</h3><a class="learn-ref" href="learn.html#timing">Timing terms</a></div>
           <div class="table-wrap"><table class="pace" id="pace"></table></div>
           <p class="note"><span class="pb-key"></span>Fastest in the session. Ideal is the sum of a driver's best three sectors.</p>
-          <a class="explain" href="learn.html#timing">Reading timing data</a>
         </div>
         <div class="panel" data-reveal style="--d:100ms">
-          <h3>Quickest pit lane times</h3>
+          <div class="panel-head"><h3>Quickest pit stops</h3><a class="learn-ref" href="learn.html#strategy">Strategy</a></div>
           <ol class="pits" id="pits"></ol>
-          <p class="note">Entry to exit of the pit lane, including the stop.</p>
+          <p class="note">Time from pit entry to pit exit, including the stop itself.</p>
         </div>
       </div>
 
       <div class="panel" data-reveal>
-        <h3>Tyre strategy</h3>
+        <div class="panel-head"><h3>Tyre strategy</h3><a class="learn-ref" href="learn.html#tyres">Tyres</a></div>
         <div class="stints" id="stints"></div>
         <div class="lap-axis" id="lap-axis" aria-hidden="true"></div>
         <div class="compounds" id="compounds"></div>
-        <a class="explain" href="learn.html#tyres">How tyres and pit stops decide races</a>
       </div>
     </section>
 
-    <!-- Data feed -->
+    <!-- 06 Data feed -->
     <section class="block" id="feed-section">
       <div class="block-head" data-reveal>
         <p class="kicker">Under the hood</p>
-        <h2><span class="sec-num" aria-hidden="true">05</span>Data feed</h2>
+        <h2><span class="sec-num" aria-hidden="true">06</span>Data feed</h2>
         <p class="lede">Every number on this page is fetched live from two public APIs and worked out in your browser. No server, no database, no framework.</p>
       </div>
       <dl class="counters" id="counters" data-reveal></dl>
@@ -304,13 +322,18 @@
   </main>
 
   <footer class="foot">
-    <div class="foot-row">
+    <div class="foot-top">
       <a class="mark" href="#top"><span class="mark-slash" aria-hidden="true"></span>Pit Wall</a>
-      <p class="built">Designed and built by <b>Najmi Zulhusni</b></p>
+      <nav class="foot-links" aria-label="Footer">
+        <a href="learn.html">Learn F1</a>
+        <a href="https://github.com/najmizulhusni/pit-wall" rel="noopener" target="_blank">Source code</a>
+        <a href="mailto:najmisapuan02@gmail.com">najmisapuan02@gmail.com</a>
+      </nav>
     </div>
-    <p class="contact"><a href="mailto:najmisapuan02@gmail.com">najmisapuan02@gmail.com</a></p>
-    <p class="stack">Vanilla JavaScript, hand-drawn SVG and two public APIs. No framework, no chart library, no build step.</p>
-    <p class="credit">Data from <a href="https://openf1.org" rel="noopener" target="_blank">OpenF1</a> and <a href="https://github.com/jolpica/jolpica-f1" rel="noopener" target="_blank">Jolpica F1</a>. Times are shown in your local time zone. Unofficial; not associated with Formula 1, the FIA or any team.</p>
+    <div class="foot-base">
+      <p>Designed and built by <b>Najmi Zulhusni</b></p>
+      <p>Data from <a href="https://openf1.org" rel="noopener" target="_blank">OpenF1</a> and <a href="https://github.com/jolpica/jolpica-f1" rel="noopener" target="_blank">Jolpica F1</a>. Unofficial; not associated with Formula 1, the FIA or any team.</p>
+    </div>
   </footer>
 </body>
 </html>
