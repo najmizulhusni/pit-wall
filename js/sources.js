@@ -173,9 +173,12 @@
     ]);
     const races = mergeRounds(racePages, "Results");
     const sprints = mergeRounds(sprintPages, "SprintResults");
-    return [...races.values()]
+    const out = [...races.values()]
       .sort((a, b) => a.round - b.round)
       .map(r => ({ ...r, sprint: sprints.get(r.round)?.rows || [] }));
+    // A sprint whose Grand Prix hasn't been classified yet (Saturday night of a sprint weekend).
+    out.sprintOnly = new Map([...sprints].filter(([round]) => !races.has(round)).map(([round, v]) => [round, v.rows]));
+    return out;
   }
 
   /*
@@ -238,9 +241,76 @@
   }
 
   const laps = key => P.request("openf1", `laps?session_key=${key}`, { label: "laps", ttl: day });
-  const stints = key => P.request("openf1", `stints?session_key=${key}`, { label: "stints", ttl: day });
+  const stints = (key, fresh) => P.request("openf1", `stints?session_key=${key}`, { label: "stints", ttl: day, fresh });
+  /* Timing data straight from OpenF1: final classification, running positions and gaps. */
+  async function sessionResult(key, fresh) {
+    const res = await P.request("openf1", `session_result?session_key=${key}`, { label: "classification", ttl: day, noStale: true, fresh });
+    return Array.isArray(res) ? res.filter(r => r.position).sort((a, b) => a.position - b.position) : [];
+  }
+  const since = d => (d ? `&date>${encodeURIComponent(d)}` : "");
+  // Polled during a session: never cached, never answered from an old copy.
+  const live = label => ({ label, ttl: 0, fresh: true, noStale: true, noStore: true });
+  const positions = (key, from) => P.request("openf1", `position?session_key=${key}${since(from)}`, live("live positions"));
+  const intervals = (key, from) => P.request("openf1", `intervals?session_key=${key}${since(from)}`, live("live gaps"));
+
+  /*
+    Jolpica publishes official results hours after the flag; OpenF1 has the classification minutes after.
+    Until Jolpica catches up, the latest race comes from OpenF1 and its points are added on top of the
+    official tables, marked provisional. Pure, so it's tested.
+  */
+  const gapText = g => typeof g === "number" ? `+${g.toFixed(3)}s` : g ? String(g).replace(/LAPS?/i, m => m.toLowerCase()) : null;
+  function provisional({ race, result, drivers: byNum, schedule, standings, teams, rounds }) {
+    if (!race || !result?.length) return null;
+    const t = Date.parse(race.date_start);
+    const meta = (schedule || []).find(r => r.start && Math.abs(r.start.getTime() - t) < 30 * 36e5);
+    const known = new Map((standings?.rows || []).map(r => [r.driver.code, r]));
+    const teamOf = new Map((teams?.rows || []).map(r => [r.team.toLowerCase(), r.teamId]));
+    const rows = result.map(x => {
+      const d = byNum?.get(x.driver_number) || {};
+      const k = known.get(d.code);
+      const out = x.dnf || x.dns || x.dsq;
+      return {
+        pos: x.position, grid: null, points: Number(x.points) || 0,
+        status: x.dsq ? "Disqualified" : x.dns ? "Did not start" : x.dnf ? "Retired" : "Finished",
+        finished: !out,
+        time: out ? null : x.position === 1 && x.duration ? raceClock(x.duration) : gapText(x.gap_to_leader),
+        fastestRank: null, fastestTime: null,
+        driver: k?.driver || { id: (d.code || String(x.driver_number)).toLowerCase(), code: d.code || String(x.driver_number), number: String(x.driver_number), given: (d.name || "").split(" ")[0], family: d.family || d.code || "" },
+        teamId: k?.teamId || teamOf.get((d.team || "").toLowerCase()) || "",
+        team: k?.team || d.team || ""
+      };
+    });
+    const round = meta?.round ?? (standings?.round || 0) + 1;
+    const last = {
+      round, name: meta?.name || `${race.location} Grand Prix`, circuit: meta?.circuit || race.circuit_short_name,
+      locality: meta?.locality || race.location, country: meta?.country || race.country_name,
+      date: new Date(race.date_start), results: rows, provisional: true
+    };
+    const bump = (table, keyOf) => {
+      if (!table) return table;
+      const add = new Map();
+      rows.forEach(r => { const k = keyOf(r); if (k) add.set(k, (add.get(k) || 0) + r.points); });
+      const next = table.rows.map((r, i) => ({ ...r, i, points: r.points + (add.get(keyOf(r)) || 0), wins: r.wins + (rows[0] && keyOf(rows[0]) === keyOf(r) ? 1 : 0) }))
+        .sort((a, b) => b.points - a.points || a.i - b.i)
+        .map(({ i, ...r }, n) => ({ ...r, pos: n + 1 }));
+      return { ...table, round, rows: next };
+    };
+    const sprint = rounds?.sprintOnly?.get(round) || [];
+    const merged = rounds ? Object.assign([...rounds.filter(r => r.round !== round), { round, name: last.name, rows, sprint }].sort((a, b) => a.round - b.round), { sprintOnly: rounds.sprintOnly }) : rounds;
+    return {
+      last,
+      standings: bump(standings, r => r.driver.code),
+      teams: bump(teams, r => r.teamId),
+      rounds: merged
+    };
+  }
+  function raceClock(sec) {
+    const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, x = sec - h * 3600 - m * 60;
+    return `${h}:${String(m).padStart(2, "0")}:${x.toFixed(3).padStart(6, "0")}`;
+  }
+
   const pits = key => P.request("openf1", `pit?session_key=${key}`, { label: "pit stops", ttl: day });
-  const raceControl = key => P.request("openf1", `race_control?session_key=${key}`, { label: "race control", ttl: day });
+  const raceControl = (key, fresh) => P.request("openf1", `race_control?session_key=${key}`, { label: "race control", ttl: day, fresh });
 
   async function weather(key) {
     const list = await P.request("openf1", `weather?session_key=${key}`, { label: "weather", ttl: 24 * 3600e3 });
@@ -475,7 +545,7 @@
     resolveSeason, season: () => SEASON,
     schedule, upcoming, driverStandings, constructorStandings, lastRace, seasonResults, lastQualifying,
     sessions, drivers, laps, stints, pits, raceControl, weather, classification,
-    raceTrace, neutralised, pace,
+    raceTrace, neutralised, pace, sessionResult, positions, intervals, provisional,
     cleanLaps, fastestLap, lapTelemetry, dominance, colourIndex, numberForCode, TEAM_FALLBACK
   };
 })();

@@ -95,3 +95,32 @@ test("fastestLap ignores pit-out laps and laps without a time", () => {
   assert.equal(S.fastestLap(rows).driver_number, 2);
   assert.equal(S.fastestLap(rows, 1).lap_number, 3);
 });
+
+test("provisional: OpenF1 classification added on top of lagging official tables", () => {
+  const drv = (id, code) => ({ id, code, given: id, family: id });
+  const standings = { round: 17, rows: [
+    { pos: 1, points: 100, wins: 3, driver: drv("antonelli", "ANT"), teamId: "mercedes", team: "Mercedes" },
+    { pos: 2, points: 90, wins: 1, driver: drv("verstappen", "VER"), teamId: "red_bull", team: "Red Bull" }
+  ] };
+  const teams = { rows: [
+    { pos: 1, points: 150, wins: 3, teamId: "mercedes", team: "Mercedes" },
+    { pos: 2, points: 120, wins: 1, teamId: "red_bull", team: "Red Bull" }
+  ] };
+  const rounds = Object.assign([{ round: 16, rows: [], sprint: [] }], { sprintOnly: new Map([[17, [{ points: 8 }]]]) });
+  const schedule = [{ round: 17, name: "Singapore Grand Prix", locality: "Marina Bay", start: new Date("2026-10-11T12:00:00Z") }];
+  const race = { session_key: 1, date_start: "2026-10-11T12:00:00+00:00", location: "Marina Bay" };
+  const drivers = new Map([[3, { code: "VER", team: "Red Bull Racing" }], [12, { code: "ANT", team: "Mercedes" }]]);
+  const result = [
+    { position: 1, driver_number: 3, points: 25, duration: 6120.785, gap_to_leader: 0 },
+    { position: 2, driver_number: 12, points: 18, gap_to_leader: 7.335 }
+  ];
+  const p = S.provisional({ race, result, drivers, schedule, standings, teams, rounds });
+  assert.equal(p.last.round, 17);
+  assert.equal(p.last.name, "Singapore Grand Prix");
+  assert.equal(p.last.provisional, true);
+  assert.deepEqual(plain(p.last.results.map(r => r.time)), ["1:42:00.785", "+7.335s"]);
+  assert.deepEqual(plain(p.standings.rows.map(r => [r.driver.code, r.points, r.pos, r.wins])), [["ANT", 118, 1, 3], ["VER", 115, 2, 2]]);
+  assert.deepEqual(plain(p.teams.rows.map(r => [r.teamId, r.points])), [["mercedes", 168], ["red_bull", 145]]);
+  assert.deepEqual(plain(p.rounds.map(r => r.round)), [16, 17]);
+  assert.equal(p.rounds[1].sprint.length, 1);
+});

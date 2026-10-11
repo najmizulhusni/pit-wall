@@ -962,3 +962,51 @@ html.drawer-lock { overflow: hidden; }
   .drawer-panel { top: auto; left: 0; width: 100%; max-height: 88vh; border-left: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; padding: 24px 18px calc(24px + env(safe-area-inset-bottom, 0px)); transform: translate3d(0, 100%, 0); }
   .lap-prog { width: 130px; }
 }
+
+/* ---------- Live timing: one card, rows that slide when places change ---------- */
+.lt-dot { display: inline-block; width: .32em; height: .32em; margin: 0 .3em .12em 0; border-radius: 50%; background: var(--faint); vertical-align: middle; }
+.live.is-live .lt-dot { background: var(--bad); animation: lt-pulse 1.6s ease-out infinite; }
+@keyframes lt-pulse { 0% { box-shadow: 0 0 0 0 rgb(255 107 94 / .55); } 100% { box-shadow: 0 0 0 .45em rgb(255 107 94 / 0); } }
+.lt { background: var(--pit); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+:root[data-theme="light"] .lt { box-shadow: var(--elev); }
+.lt-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.lt-ev { display: grid; gap: 3px; min-width: 0; }
+.lt-ev b { font-size: var(--t-l); font-weight: 800; font-stretch: 85%; text-transform: uppercase; letter-spacing: .01em; }
+.lt-ev span { color: var(--dust); font-size: var(--t-s); font-variant-numeric: tabular-nums; }
+.lt-state { display: flex; gap: 8px; align-items: center; flex-shrink: 0; }
+.lt-pill, .lt-flag { padding: 5px 11px; border-radius: 999px; font-size: var(--t-xs); font-weight: 750; letter-spacing: .06em; text-transform: uppercase; border: 1px solid var(--line); color: var(--dust); white-space: nowrap; }
+.lt-pill.on { background: var(--bad); border-color: var(--bad); color: #fff; }
+.lt-pill.prov { color: var(--warn); border-color: currentColor; }
+.lt-flag { color: #1a1300; background: var(--warn); border-color: var(--warn); }
+.lt-flag.red { background: var(--bad); border-color: var(--bad); color: #fff; }
+.lt-cols, .lt-row { display: grid; grid-template-columns: 34px minmax(0, 1fr) 64px 44px 92px; align-items: center; gap: 10px; padding: 0 20px; }
+.lt-cols { height: 34px; font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); border-bottom: 1px solid var(--line); }
+.lt-cols span:nth-child(n+3), .lt-row > :nth-child(n+3) { text-align: right; justify-self: end; }
+.lt-board { list-style: none; margin: 0; padding: 0; position: relative; }
+.lt-row { height: 46px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; background: var(--pit); will-change: transform; }
+.lt-row:last-child { border-bottom: 0; }
+.lt-row.me { background: color-mix(in srgb, var(--c) 10%, var(--pit)); }
+.lt-row.out { color: var(--faint); }
+.lt-pos { font-weight: 800; font-size: var(--t-m); }
+.lt-drv { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.lt-drv::before { content: ""; width: 4px; height: 22px; border-radius: 2px; background: var(--c); flex-shrink: 0; }
+.lt-drv b { font-weight: 800; letter-spacing: .02em; }
+.lt-drv span { color: var(--dust); font-size: var(--t-s); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lt-tyre { display: inline-flex; align-items: center; gap: 6px; color: var(--dust); font-size: var(--t-xs); }
+.lt-tyre i { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--tc); font-style: normal; font-size: 0.625rem; font-weight: 800; color: var(--chalk); }
+.lt-stops { color: var(--dust); }
+.lt-gap { font-weight: 700; }
+.lt-gap.flash { animation: lt-flash 900ms var(--ease-out); }
+@keyframes lt-flash { from { color: var(--ok); } }
+.lt-row.up .lt-pos { color: var(--ok); }
+.lt-row.down .lt-pos { color: var(--bad); }
+.lt-foot { margin: 0; padding: 12px 20px; font-size: var(--t-xs); color: var(--faint); border-top: 1px solid var(--line); }
+.lt-foot:empty { display: none; }
+.prov-tag { color: var(--warn); }
+@media (max-width: 560px) {
+  .lt-cols, .lt-row { grid-template-columns: 24px minmax(0, 1fr) 24px 16px 104px; gap: 8px; padding: 0 14px; }
+  .lt-cols span:nth-child(3), .lt-cols span:nth-child(4) { visibility: hidden; }
+  .lt-drv span, .lt-tyre small { display: none; }
+  .lt-top { padding: 16px 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .live.is-live .lt-dot, .lt-gap.flash { animation: none; } }

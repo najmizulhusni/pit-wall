@@ -257,7 +257,7 @@
           entry.rows = src.count(data);
           stats.rows += entry.rows;
           stats.lastOkAt = Date.now();
-          cacheWrite(url, text, data);
+          if (!opts.noStore) cacheWrite(url, text, data);   // live increments are read once
           taps.forEach(fn => fn(sourceKey, path, data));
           emit(entry, "done");
           return data;

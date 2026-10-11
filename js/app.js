@@ -140,7 +140,7 @@
       return;
     }
     const finale = state.schedule && r.round === state.schedule.length;
-    kick.innerHTML = `<span>${finale ? "Season finale" : "Latest race"}</span><span>${state.mode?.mode === "live" ? `Round ${r.round}` : `${state.mode?.year ?? ""} round ${r.round}`}</span><span>${esc(dateShort(r.date))}</span><span>${esc(r.locality)}</span>`;
+    kick.innerHTML = `<span>${finale ? "Season finale" : "Latest race"}</span>${r.provisional ? `<span class="prov-tag">Provisional</span>` : ""}<span>${state.mode?.mode === "live" ? `Round ${r.round}` : `${state.mode?.year ?? ""} round ${r.round}`}</span><span>${esc(dateShort(r.date))}</span><span>${esc(r.locality)}</span>`;
     if (title.dataset.round !== String(r.round)) {
       title.dataset.round = r.round;
       title.innerHTML = r.name.split(" ").map((w, i) => `<span class="w" style="--i:${i}"><span>${esc(w)}</span></span>`).join(" ");
@@ -160,6 +160,7 @@
       ? `<li class="wide"><span>Title</span><b>${esc(shortName(tm.lead.driver))} is champion</b></li>`
       : tm.earliest ? `<li class="wide"><span>Title</span><b>${esc(shortName(tm.lead.driver))} can clinch in ${esc(tm.earliest.r.locality)} at the earliest</b></li>` : "";
     $("#hero-notes").innerHTML = [
+      r.provisional ? `<li class="wide"><span>Provisional</span><b>From live timing. Official results and points usually follow within a few hours</b></li>` : "",
       titleNote,
       gain && gain.gain > 0 ? `<li><span>Biggest climb</span><b>${esc(gain.driver.family)}, P${gain.grid} to P${gain.pos}</b></li>` : "",
       fl ? `<li><span>Fastest lap</span><b>${esc(fl.driver.family)}${fl.fastestTime ? `, ${esc(fl.fastestTime)}` : ""}</b></li>` : "",
@@ -1191,7 +1192,11 @@
     try { state.mode = await S.resolveSeason(requested); }
     catch { state.mode = { year: new Date().getUTCFullYear(), mode: "live" }; }
     fillSeasonPicker();
-    Promise.allSettled([loadSeason(), loadLive()]).then(() => { lastSync = Date.now(); setFeed(); scheduleSync(); });
+    Promise.allSettled([loadSeason(), loadLive()]).then(async () => {
+      ltStart();
+      if (await catchUp()) rerenderSeason();
+      lastSync = Date.now(); setFeed(); scheduleSync();
+    });
   }
 
   /* ---------- real time ---------- */
@@ -1220,12 +1225,14 @@
     try {
       const [ds, cs, lr] = await Promise.all([S.driverStandings(true), S.constructorStandings(true), S.lastRace(true)]);
       const key = st => (st ? `${st.round}:${st.rows.map(r => r.points).join(",")}` : "");
-      if (ds && (key(ds) !== key(state.standings) || (lr && lr.round !== state.last?.round))) {
-        Object.assign(state, { standings: ds, teams: cs || state.teams, last: lr || state.last });
-        state.rounds = await S.seasonResults(true).catch(() => state.rounds);
-        seasonKicker(); renderStandings(false); renderTitleRace(); renderBattle(false); renderHeroRace();
-        renderCalendar(); fillPicks(); renderH2H(false); renderFollow();
-        toast(`New results: ${state.last ? state.last.name : "standings updated"}`);
+      const base = state.base || state;   // compare with the official tables, not the provisional ones
+      let redraw = false, msg = "";
+      if (ds && (key(ds) !== key(base.standings) || (lr && lr.round !== base.last?.round))) {
+        const official = lr && lr.round !== base.last?.round;
+        Object.assign(state, { standings: ds, teams: cs || base.teams, last: lr || base.last, base: null });
+        state.rounds = await S.seasonResults(true).catch(() => base.rounds);
+        redraw = true;
+        msg = official ? `Official result: ${state.last.name}` : "Standings updated";
       }
       const sess = await S.sessions(state.mode.year, true).catch(() => null);
       if (sess && state.sessions) {
@@ -1233,6 +1240,7 @@
         const showing = state.session?.session_key;
         const changed = sess.completed[0]?.session_key !== state.sessions.completed[0]?.session_key;
         state.sessions = sess;
+        ltStart(true);
         if (changed) {
           fillSessions(); renderCalendar();
           const race = sess.completed.find(s => s.session_name === "Race");
@@ -1243,6 +1251,9 @@
           }
         }
       }
+      const shown = state.last?.key;
+      if (await catchUp(true)) { redraw = true; if (state.last.key !== shown) msg = `${state.last.name}: provisional result`; }
+      if (redraw) { rerenderSeason(); if (msg) toast(msg); }
       lastSync = Date.now();
     } catch { /* the request log shows what failed; the next tick tries again */ }
     finally { syncing = false; setFeed(); scheduleSync(); }
@@ -1253,6 +1264,197 @@
     t.classList.add("on");
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.classList.remove("on"), 4200);
+  }
+
+  /* ---------- provisional results ---------- */
+  // Jolpica posts the official result hours after the flag; OpenF1 has the classification within minutes.
+  // Until they agree, the newest race comes from OpenF1 and its points sit on top of the official tables.
+  function rerenderSeason() {
+    seasonKicker(); renderStandings(false); renderTitleRace(); renderBattle(false); renderHeroRace();
+    renderCalendar(); fillPicks(); renderH2H(false); renderFollow();
+  }
+  async function catchUp(fresh) {
+    if (state.mode?.mode !== "live" || !state.sessions) return false;
+    const base = state.base || { standings: state.standings, teams: state.teams, last: state.last, rounds: state.rounds };
+    const race = state.sessions.completed.find(s => s.session_name === "Race");
+    if (!race || (base.last && Date.parse(race.date_start) < base.last.date.getTime() + 12 * 36e5)) return false;
+    if (state.base && state.last?.key === race.session_key) return false;
+    try {
+      const [result, drivers] = await Promise.all([S.sessionResult(race.session_key, fresh), S.drivers(race.session_key)]);
+      const p = S.provisional({ race, result, drivers, schedule: state.schedule, ...base });
+      if (!p) return false;
+      state.base = base;
+      Object.assign(state, p);
+      state.last.key = race.session_key;
+      return true;
+    } catch { return false; }
+  }
+
+  /* ---------- live timing ---------- */
+  // While a session runs: positions and gaps every 10 s, asking only for rows newer than the last seen;
+  // tyres and race control every 30 s. Otherwise the latest session's classification. Rows slide (FLIP).
+  const LT_POLL = 10e3, TYRE = { SOFT: "S", MEDIUM: "M", HARD: "H", INTERMEDIATE: "I", WET: "W" };
+  const lt = { key: null, live: false, gapMode: "leader", timer: 0 };
+  const lastOf = v => Array.isArray(v) ? v.filter(x => x != null).at(-1) ?? null : v;
+  const gapFmt = g => g == null ? "" : typeof g === "number" ? `+${g.toFixed(3)}` : String(g).replace(/LAPS?/i, m => m.toLowerCase());
+
+  async function ltStart(fresh) {
+    const ss = state.sessions;
+    const s = ss && state.mode?.mode !== "archive" ? ss.live || ss.completed[0] : null;
+    $("#live").hidden = !s;
+    if (!s) return;
+    const live = s === ss.live;
+    if (s.session_key === lt.key && live === lt.live) {
+      if (!live && !lt.final?.length) ltFinal(true);     // classification not published yet: try again
+      return;
+    }
+    clearTimeout(lt.timer);
+    Object.assign(lt, { key: s.session_key, s, live, pos: new Map(), gap: new Map(), int: new Map(), since: {}, final: null, err: null, stints: [], rc: [], tick: 0, at: 0, drivers: null });
+    $("#live").classList.toggle("is-live", live);
+    $("#lt-mode").hidden = !(live && isRace(s));
+    lt.drivers = await S.drivers(s.session_key).catch(() => null);
+    if (live) ltPoll(); else ltFinal(fresh);
+  }
+  async function ltFinal(fresh) {
+    const key = lt.key;
+    try {
+      const [res, st] = await Promise.all([S.sessionResult(key, fresh), S.stints(key).catch(() => [])]);
+      if (key !== lt.key) return;
+      Object.assign(lt, { final: res, stints: st, err: res.length ? null : "The classification isn't published yet. It usually follows a few minutes after the flag." });
+    } catch (e) { if (key === lt.key) lt.err = errText(e); }
+    ltRender();
+  }
+  async function ltPoll() {
+    const key = lt.key, race = isRace(lt.s), slow = lt.tick++ % 3 === 0;
+    try {
+      const [pos, gaps, st, rc] = await Promise.all([
+        S.positions(key, lt.since.pos),
+        race ? S.intervals(key, lt.since.int || new Date(Date.now() - 90e3).toISOString()) : [],
+        slow ? S.stints(key, true) : null,
+        slow ? S.raceControl(key, true) : null
+      ]);
+      if (key !== lt.key) return;
+      pos.forEach(p => { lt.pos.set(p.driver_number, p.position); if (!lt.since.pos || p.date > lt.since.pos) lt.since.pos = p.date; });
+      gaps.forEach(p => { lt.gap.set(p.driver_number, p.gap_to_leader); lt.int.set(p.driver_number, p.interval); if (!lt.since.int || p.date > lt.since.int) lt.since.int = p.date; });
+      if (st) lt.stints = st;
+      if (rc) lt.rc = rc;
+      lt.err = null; lt.at = Date.now();
+    } catch (e) {
+      if (key !== lt.key) return;
+      lt.err = /40[13]/.test(String(e.status || e.message))
+        ? "OpenF1 only shares timing with subscribers while a session is running. The full classification appears here a few minutes after the flag."
+        : errText(e);
+    }
+    ltRender();
+    if (lt.live && key === lt.key) lt.timer = setTimeout(ltPoll, lt.err ? 60e3 : document.hidden ? 30e3 : LT_POLL);
+  }
+
+  // Track state from race control: the newest message that starts or ends a neutralisation wins.
+  function ltFlag() {
+    let flag = null, lap = 0;
+    for (const m of lt.rc || []) {
+      lap = Math.max(lap, m.lap_number || 0);
+      const msg = (m.message || "").toUpperCase();
+      if (m.category === "SafetyCar") flag = /VSC|VIRTUAL/.test(msg) ? (/ENDING/.test(msg) ? null : "VSC") : /IN THIS LAP/.test(msg) ? null : /DEPLOYED/.test(msg) ? "Safety car" : flag;
+      else if (m.flag === "RED") flag = "Red flag";
+      else if (m.flag === "CHEQUERED") flag = "Chequered";
+      else if (m.flag === "GREEN" && m.scope === "Track" && flag === "Red flag") flag = null;
+    }
+    return { flag, lap };
+  }
+
+  function ltRows() {
+    const tyre = new Map();
+    (lt.stints || []).forEach(t => { const p = tyre.get(t.driver_number); if (!p || t.stint_number > p.stint_number) tyre.set(t.driver_number, t); });
+    const stops = n => (lt.stints || []).filter(t => t.driver_number === n).length - 1;
+    const race = isRace(lt.s), { lap } = ltFlag();
+    const base = lt.live
+      ? [...lt.pos].sort((a, b) => a[1] - b[1]).map(([num, pos]) => {
+          const g = lt.gapMode === "ahead" ? lt.int.get(num) : lt.gap.get(num);
+          return { num, pos, gap: pos === 1 ? (race ? "Leader" : "") : gapFmt(g) };
+        })
+      : (lt.final || []).map(x => {
+          const out = x.dsq ? "DSQ" : x.dns ? "DNS" : x.dnf ? "DNF" : "";
+          const best = lastOf(x.duration), g = lastOf(x.gap_to_leader);
+          const gap = out || (x.position === 1 ? (race ? (best ? raceTime(best) : "") : best ? lapTime(best) : "") : gapFmt(g));
+          return { num: x.driver_number, pos: x.position, gap, out: Boolean(out), laps: x.number_of_laps };
+        });
+    const followCode = state.standings?.rows.find(r => r.driver.id === state.follow)?.driver.code;
+    return base.map(r => {
+      const d = lt.drivers?.get(r.num) || {}, t = tyre.get(r.num);
+      const nowLap = lt.live ? lap : t?.lap_end;
+      const age = t && nowLap ? (t.tyre_age_at_start || 0) + Math.max(0, nowLap - t.lap_start) : null;
+      return {
+        ...r, code: d.code || `#${r.num}`, name: d.family || "", team: d.team || "",
+        colour: d.colour || state.colourFor(d.code), me: Boolean(followCode) && d.code === followCode,
+        tyre: t?.compound, age, stops: race && t ? Math.max(0, stops(r.num)) : null
+      };
+    });
+  }
+
+  function ltMeta() {
+    const t = Date.parse(lt.s.date_start);
+    return (state.upcoming || state.schedule || []).find(r => r.start && t > r.start.getTime() - 4 * 864e5 && t < r.start.getTime() + 864e5);
+  }
+
+  function ltRender() {
+    if (!lt.s) return;
+    const s = lt.s, meta = ltMeta(), { flag, lap } = ltFlag(), rows = ltRows(), race = isRace(s);
+    const laps = lt.live ? lap : rows[0]?.laps;
+    $("#lt-title").textContent = meta?.name || `${s.location} ${s.session_type || ""}`.trim();
+    $("#lt-sub").textContent = [s.session_name, dateLong(s.date_start), laps ? `Lap ${laps}` : ""].filter(Boolean).join(" · ");
+    const pill = $("#lt-pill");
+    pill.textContent = lt.live ? "Live" : "Final";
+    pill.className = `lt-pill${lt.live ? " on" : ""}`;
+    const f = $("#lt-flag");
+    f.hidden = !lt.live || !flag;
+    f.textContent = flag || "";
+    f.classList.toggle("red", flag === "Red flag");
+    $("#lt-gap-h").textContent = lt.live && lt.gapMode === "ahead" ? "Interval" : race || !lt.live ? (race ? "Gap" : "Best") : "";
+    $("#lt-kicker").innerHTML = `<span>${lt.live ? "On now" : "Latest session"}</span><span>${esc(s.location)}</span>`;
+    $("#lt-foot").textContent = lt.err || (lt.live ? `From OpenF1 timing. Updates every ${LT_POLL / 1000} seconds.` : "");
+
+    const board = $("#lt-board");
+    if (!rows.length) { board.innerHTML = lt.err ? "" : `<li class="lt-row"><span></span><span class="lt-drv">${lt.live ? "Waiting for the first timing data" : "Loading"}</span></li>`; return; }
+    const els = new Map($$(".lt-row[data-n]", board).map(el => [el.dataset.n, el]));
+    const before = new Map([...els].map(([n, el]) => [n, el.getBoundingClientRect().top]));
+    board.querySelectorAll(".lt-row:not([data-n])").forEach(el => el.remove());
+    const frag = document.createDocumentFragment();
+    rows.forEach(r => {
+      const n = String(r.num);
+      let el = els.get(n);
+      if (!el) { el = document.createElement("li"); el.dataset.n = n; }
+      els.delete(n);
+      el.className = `lt-row${r.me ? " me" : ""}${r.out ? " out" : ""}`;
+      el.style.setProperty("--c", r.colour);
+      const html = `<span class="lt-pos">${r.pos}</span>
+        <span class="lt-drv"><b>${esc(r.code)}</b><span>${esc(r.name)}</span></span>
+        <span class="lt-tyre">${r.tyre ? `<small>${r.age ?? ""}</small><i style="--tc:${COMPOUND[r.tyre] || "var(--faint)"}" title="${esc(r.tyre.toLowerCase())}">${TYRE[r.tyre] || "?"}</i>` : ""}</span>
+        <span class="lt-stops">${r.stops ?? ""}</span>
+        <span class="lt-gap">${esc(r.gap)}</span>`;
+      if (el._html !== html) {
+        const flash = lt.live && el._gap != null && el._gap !== r.gap;
+        el.innerHTML = el._html = html;
+        if (flash) $(".lt-gap", el).classList.add("flash");
+        el._gap = r.gap;
+      }
+      frag.appendChild(el);
+    });
+    els.forEach(el => el.remove());
+    board.appendChild(frag);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    $$(".lt-row[data-n]", board).forEach(el => {
+      const was = before.get(el.dataset.n);
+      if (was == null) return;
+      const dy = was - el.getBoundingClientRect().top;
+      if (Math.abs(dy) < 1) return;
+      el.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 650, easing: "cubic-bezier(.16, 1, .3, 1)" });
+      if (lt.live) {
+        el.classList.add(dy > 0 ? "up" : "down");
+        clearTimeout(el._t);
+        el._t = setTimeout(() => el.classList.remove("up", "down"), 4000);
+      }
+    });
   }
 
   /* ---------- how the title fight unfolded ---------- */
@@ -1384,6 +1586,13 @@
       $$("#trace-panel .seg button").forEach(x => x.setAttribute("aria-selected", String(x === b)));
       segInk(b.parentElement);
       renderTrace(true);
+    }));
+    $$("#lt-mode button").forEach(b => b.addEventListener("click", () => {
+      if (lt.gapMode === b.dataset.gap) return;
+      lt.gapMode = b.dataset.gap;
+      $$("#lt-mode button").forEach(x => x.setAttribute("aria-selected", String(x === b)));
+      segInk(b.parentElement);
+      ltRender();
     }));
     $("#more").addEventListener("click", () => { state.showAll = !state.showAll; renderStandings(false); });
     $("#feed").title = "Checks for new results every minute on race weekends, every 10 minutes otherwise. Click to fetch everything now.";

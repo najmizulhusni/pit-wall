@@ -50,6 +50,7 @@
   <header class="topbar">
     <a class="mark" href="#top"><span class="mark-slash" aria-hidden="true"></span>Pit Wall</a>
     <nav aria-label="Sections" data-spy>
+      <a href="#live">Live</a>
       <a href="#season">Standings</a>
       <a href="#title">Title race</a>
       <a href="#calendar">Calendar</a>
@@ -119,6 +120,31 @@
         <div class="follow-chips" id="follow-chips" role="group" aria-label="Quick pick"></div>
       </div>
     </div>
+
+    <!-- Live timing -->
+    <section class="block live" id="live" hidden>
+      <div class="block-head" data-reveal>
+        <p class="kicker" id="lt-kicker">Live timing</p>
+        <h2><span class="lt-dot" aria-hidden="true"></span>Live</h2>
+        <p class="lede">The running order as it happens: gaps, tyres and stops, refreshed every few seconds while a session is on. Between sessions, the latest classification.</p>
+        <div class="head-tools">
+          <div class="seg" role="tablist" aria-label="Gap type" id="lt-mode" hidden>
+            <button role="tab" aria-selected="true" data-gap="leader">To leader</button>
+            <button role="tab" aria-selected="false" data-gap="ahead">Interval</button>
+            <span class="seg-ink" aria-hidden="true"></span>
+          </div>
+        </div>
+      </div>
+      <div class="lt" id="lt">
+        <div class="lt-top">
+          <div class="lt-ev"><b id="lt-title">Loading timing</b><span id="lt-sub"></span></div>
+          <div class="lt-state"><span class="lt-flag" id="lt-flag" hidden></span><span class="lt-pill" id="lt-pill">…</span></div>
+        </div>
+        <div class="lt-cols" aria-hidden="true"><span>Pos</span><span>Driver</span><span>Tyre</span><span>Stops</span><span id="lt-gap-h">Gap</span></div>
+        <ol class="lt-board" id="lt-board" aria-live="off"></ol>
+        <p class="lt-foot" id="lt-foot"></p>
+      </div>
+    </section>
 
     <!-- 01 Standings -->
     <section class="block" id="season">

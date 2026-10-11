@@ -21,6 +21,7 @@ Data comes from two public APIs that know nothing about each other. The page pul
 | Section | What it shows |
 |---|---|
 | Hero | Latest race: podium steps, recap, and the fastest lap replayed with a top-down car in team colours, rev lights from real RPM, gear, speed, pedals and lap clock. Below: the next weekend's countdown and sessions in your time zone, and your driver |
+| Live | The running order like a live scoreboard: position, gap to the leader or the car ahead, tyre and its age, stops, and the track status (safety car, VSC, red flag). Polled every 10 seconds while a session runs; rows slide when places change. Between sessions, the latest classification |
 | 01 Standings | Drivers and constructors side by side, timing-tower style, with last-five form and the gap to the leader; any season since 2023 |
 | 02 Title race | When the leader can win it: earliest possible round, the date on current form, a "Can they still win?" chart, the projected final table, and the road to the title round by round |
 | 03 Calendar | The whole season as a grid: winners of finished rounds (open one for its race data), the next round, calendar export |
@@ -30,6 +31,7 @@ Data comes from two public APIs that know nothing about each other. The page pul
 
 ### For fans
 
+- **Provisional results.** Jolpica publishes official results hours after the flag. Until it does, the latest race comes from OpenF1's classification (minutes after the flag), its points are added to the standings and title maths, and the hero says "Provisional".
 - **Real time.** Results are re-checked every minute on race weekends and every 10 minutes otherwise; changes update the page in place with a short notice, and the top bar shows when it last updated.
 - **Driver panel.** Click anyone in the standings for their season: stats, every race result, points by round, title chances, and one-tap follow or compare.
 - **Interactive charts.** Highlight a driver in "How the fight unfolded", and drag through the fastest-lap replay with the scrubber.
@@ -122,7 +124,7 @@ Any static host works: point it at the repo root with no build command. On GitHu
 
 ## Things to know
 
-- **OpenF1 during live sessions.** The free tier restricts data while a session is running. The page uses the last completed session, falls back to the snapshot if requests fail, and says so.
+- **OpenF1 during live sessions.** The free tier may restrict data while a session is running. The live board then says so and keeps trying once a minute; the full classification appears a few minutes after the flag.
 - **Rate limits.** Jolpica allows about 4 requests a second; OpenF1's free tier 3 a second and a per-minute cap. The page runs OpenF1 two at a time, 360 ms apart, and backs off on 429. Switching sessions very quickly can still hit the cap; the data feed shows the retries.
 - **Cancelled sessions and testing days** are skipped.
 - **Pit times** are pit lane times, entry to exit. Stationary time is shown when OpenF1 provides it.
