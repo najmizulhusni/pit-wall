@@ -27,7 +27,7 @@
     a year pins an archive season. Past seasons never change, so they cache for a week.
   */
   let SEASON = "current";
-  const seasonOpts = label => (SEASON === "current" ? { label } : { label: `${label} ${SEASON}`, ttl: 7 * day });
+  const seasonOpts = (label, fresh = false) => (SEASON === "current" ? { label, fresh } : { label: `${label} ${SEASON}`, ttl: 7 * day, fresh });
 
   /*
     Off-season guard: between the final race and the first race of the next year,
@@ -91,8 +91,8 @@
     }));
   }
 
-  async function driverStandings() {
-    const raw = await P.request("jolpica", `${SEASON}/driverstandings/`, seasonOpts("driver standings"));
+  async function driverStandings(fresh) {
+    const raw = await P.request("jolpica", `${SEASON}/driverstandings/`, seasonOpts("driver standings", fresh));
     const list = raw.MRData.StandingsTable.StandingsLists[0];
     if (!list) return { round: 0, rows: [] };
     return {
@@ -109,8 +109,8 @@
     };
   }
 
-  async function constructorStandings() {
-    const raw = await P.request("jolpica", `${SEASON}/constructorstandings/`, seasonOpts("constructor standings"));
+  async function constructorStandings(fresh) {
+    const raw = await P.request("jolpica", `${SEASON}/constructorstandings/`, seasonOpts("constructor standings", fresh));
     const list = raw.MRData.StandingsTable.StandingsLists[0];
     if (!list) return { rows: [] };
     return {
@@ -124,8 +124,8 @@
     };
   }
 
-  async function lastRace() {
-    const raw = await P.request("jolpica", `${SEASON}/last/results/`, seasonOpts("last race result"));
+  async function lastRace(fresh) {
+    const raw = await P.request("jolpica", `${SEASON}/last/results/`, seasonOpts("last race result", fresh));
     const race = raw.MRData.RaceTable.Races[0];
     if (!race) return null;
     return {
@@ -166,10 +166,10 @@
     return byRound;
   }
 
-  async function seasonResults() {
+  async function seasonResults(fresh) {
     const [racePages, sprintPages] = await Promise.all([
-      P.paginate("jolpica", `${SEASON}/results/`, "race results", 100, seasonOpts().ttl),
-      P.paginate("jolpica", `${SEASON}/sprint/`, "sprint results", 100, seasonOpts().ttl).catch(() => [])
+      P.paginate("jolpica", `${SEASON}/results/`, "race results", 100, seasonOpts().ttl, fresh),
+      P.paginate("jolpica", `${SEASON}/sprint/`, "sprint results", 100, seasonOpts().ttl, fresh).catch(() => [])
     ]);
     const races = mergeRounds(racePages, "Results");
     const sprints = mergeRounds(sprintPages, "SprintResults");
@@ -208,11 +208,11 @@
 
   /* ---------------- OpenF1 (sessions, laps, telemetry) ---------------- */
 
-  async function sessions(year = new Date().getUTCFullYear()) {
+  async function sessions(year = new Date().getUTCFullYear(), fresh = false) {
     const now = Date.now();
     // Cancelled sessions keep their slot in the calendar but never produce data; testing days aren't races.
     const held = rows => rows.filter(s => !s.is_cancelled && !/^Day \d/.test(s.session_name));
-    let list = held(await P.request("openf1", `sessions?year=${year}`, { label: `sessions ${year}`, ttl: 15 * 60 * 1000 }));
+    let list = held(await P.request("openf1", `sessions?year=${year}`, { label: `sessions ${year}`, ttl: 15 * 60 * 1000, fresh }));
     let done = list.filter(s => new Date(s.date_end).getTime() < now - 20 * 60 * 1000);
     if (!done.length) {
       list = held(await P.request("openf1", `sessions?year=${year - 1}`, { label: `sessions ${year - 1}` }));

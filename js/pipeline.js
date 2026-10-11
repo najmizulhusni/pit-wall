@@ -234,7 +234,7 @@
     };
 
     const p = (async () => {
-      const hit = bypassCache ? null : await cacheRead(url);
+      const hit = bypassCache || opts.fresh ? null : await cacheRead(url);
       if (hit && Date.now() - hit.t < ttl) {
         stats.cacheHits++;
         Object.assign(entry, { status: "cache", ms: 0, rows: src.count(hit.d) });
@@ -298,14 +298,14 @@
   }
 
   /* Jolpica pages results at 100 rows; walk the offsets until total is reached. */
-  async function paginate(sourceKey, path, label, limit = 100, ttl) {
+  async function paginate(sourceKey, path, label, limit = 100, ttl, fresh = false) {
     const sep = path.includes("?") ? "&" : "?";
-    const first = await request(sourceKey, `${path}${sep}limit=${limit}&offset=0`, { label: `${label} p1`, ttl });
+    const first = await request(sourceKey, `${path}${sep}limit=${limit}&offset=0`, { label: `${label} p1`, ttl, fresh });
     const total = Number(first.MRData.total) || 0;
     const pages = [first];
     const rest = [];
     for (let off = limit, i = 2; off < total; off += limit, i++) {
-      rest.push(request(sourceKey, `${path}${sep}limit=${limit}&offset=${off}`, { label: `${label} p${i}`, ttl }));
+      rest.push(request(sourceKey, `${path}${sep}limit=${limit}&offset=${off}`, { label: `${label} p${i}`, ttl, fresh }));
     }
     return pages.concat(await Promise.all(rest));
   }

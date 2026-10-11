@@ -117,7 +117,7 @@
     if (busy) { st = "busy"; txt = "Fetching"; }
     else if (down.length) { st = "down"; txt = `${down.map(name).join(" and ")} offline`; }
     else if (fallback.length) { st = "stale"; txt = "Using fallback data"; }
-    else if (P.stats.network) { st = "live"; txt = "Live data"; }
+    else if (P.stats.network || lastSync) { st = "live"; txt = `Live · ${ago(lastSync || P.stats.lastOkAt)}`; }
     else if (P.stats.cacheHits) { st = "live"; txt = "Cached data"; }
     if (btn.dataset.state !== st) btn.dataset.state = st;
     if (label.textContent !== txt) label.textContent = txt;
@@ -240,7 +240,7 @@
         : `<b>${esc(r.team)}</b><span>${r.wins ? plural(r.wins, "win") : ""}</span>`;
       const mine = drivers && state.follow && r.driver.id === state.follow;
       const gap = rows[0].points - r.points;
-      return `<li class="${animate ? "anim" : ""}${mine ? " mine" : ""}${i === 0 ? " lead" : ""}" style="--c:${colour};--i:${i}"><span class="pos"><b>${r.pos ?? "–"}</b></span><span class="tc"></span>
+      return `<li class="${animate ? "anim" : ""}${mine ? " mine" : ""}${i === 0 ? " lead" : ""}"${drivers ? ` data-id="${esc(r.driver.id)}" tabindex="0" role="button" aria-label="Open ${esc(shortName(r.driver))}"` : ""} style="--c:${colour};--i:${i}"><span class="pos"><b>${r.pos ?? "–"}</b></span><span class="tc"></span>
         <span class="nm">${who}</span>${showForm ? `<span class="form">${formCells(r.driver.id)}</span>` : ""}
         <span class="bar"><i data-w="${(r.points / max).toFixed(4)}"></i></span>
         <span class="pts"><b data-v="${r.points}">${animate ? 0 : fmtPts(r.points)}</b><small>${i ? `−${fmtPts(gap)}` : "Leader"}</small></span></li>`;
@@ -607,7 +607,7 @@
   const SPEED_STEPS = 24;
   const LOOK_MS = 240;                       // the car points at where it will be a quarter-second from now
   const hero = { tel: null, xy: null, map: null, car: null, trail: null, raf: 0, t0: 0, paused: C.reduced(), visible: true, offset: 0, idx: 0, shown: {}, sample: -1, angle: null, rpm: null, revN: -1 };
-  const readout = { speed: $("#r-speed"), gear: $("#r-gear"), thr: $("#r-thr"), brk: $("#r-brk"), clock: $("#r-clock"), prog: $("#r-prog"), leds: $$("#revs i") };
+  const readout = { scrub: $("#r-scrub"), speed: $("#r-speed"), gear: $("#r-gear"), thr: $("#r-thr"), brk: $("#r-brk"), clock: $("#r-clock"), prog: $("#r-prog"), leds: $$("#revs i") };
 
   /*
     A top-down F1 car, nose along +x, about 75 units long in the track's 1000-unit space.
@@ -713,6 +713,7 @@
       setText("gear", readout.gear, p.gear ? String(p.gear) : "N");
       readout.thr.style.transform = `scaleY(${(p.throttle ?? 0) / 100})`;
       readout.brk.style.transform = `scaleY(${p.brake ? 1 : 0})`;
+      if (!scrubbing) readout.scrub.value = Math.round((t / pts.at(-1).ms) * 1000);
       if (hero.rpm && p.rpm) {
         const [lo, hiR] = hero.rpm;
         const n = Math.max(0, Math.min(15, Math.round(((p.rpm - lo) / (hiR - lo || 1)) * 15)));
@@ -725,7 +726,7 @@
     }
     const s = t / 1000;
     setText("clock", readout.clock, `${Math.floor(s / 60)}:${(s % 60).toFixed(1).padStart(4, "0")}`);
-    const p = pts[i], f = p.f + ((pts[Math.min(i + 1, pts.length - 1)].f - p.f) * k);
+    const f = t / pts.at(-1).ms;
     readout.prog.style.transform = `scaleX(${f.toFixed(3)})`;
   }
 
@@ -1048,6 +1049,7 @@
     renderH2H(false);
     try {
       state.rounds = await S.seasonResults();
+      renderBattle(true);
       renderStandings(false);
       renderTitleRace();
       renderFollow();
@@ -1189,8 +1191,183 @@
     try { state.mode = await S.resolveSeason(requested); }
     catch { state.mode = { year: new Date().getUTCFullYear(), mode: "live" }; }
     fillSeasonPicker();
-    loadSeason();
-    loadLive();
+    Promise.allSettled([loadSeason(), loadLive()]).then(() => { lastSync = Date.now(); setFeed(); scheduleSync(); });
+  }
+
+  /* ---------- real time ---------- */
+  // A race weekend is re-checked every minute, the rest of the year every ten. Only small endpoints
+  // are polled; when something changed, the affected parts re-render in place and a toast says so.
+  const SYNC_LIVE = 60e3, SYNC_IDLE = 10 * 60e3;
+  let lastSync = 0, syncing = false, syncTimer = 0, scrubbing = false, toastTimer = 0;
+  const ago = t => {
+    if (!t) return "connecting";
+    const s = Math.round((Date.now() - t) / 1000);
+    return s < 45 ? "updated just now" : s < 3600 ? `updated ${Math.max(1, Math.round(s / 60))} min ago` : `updated ${Math.round(s / 3600)} h ago`;
+  };
+  function inWeekend() {
+    const now = Date.now();
+    const r = state.upcoming?.find(x => x.start && x.start.getTime() + 4 * 36e5 > now);
+    return Boolean(r) && now > (r.sessions[0]?.[1]?.getTime() ?? r.start.getTime()) - 30 * 6e4;
+  }
+  function scheduleSync() {
+    clearTimeout(syncTimer);
+    if (state.mode?.mode !== "archive") syncTimer = setTimeout(sync, inWeekend() ? SYNC_LIVE : SYNC_IDLE);
+  }
+  async function sync() {
+    if (syncing) return;
+    if (document.hidden) return scheduleSync();
+    syncing = true;
+    try {
+      const [ds, cs, lr] = await Promise.all([S.driverStandings(true), S.constructorStandings(true), S.lastRace(true)]);
+      const key = st => (st ? `${st.round}:${st.rows.map(r => r.points).join(",")}` : "");
+      if (ds && (key(ds) !== key(state.standings) || (lr && lr.round !== state.last?.round))) {
+        Object.assign(state, { standings: ds, teams: cs || state.teams, last: lr || state.last });
+        state.rounds = await S.seasonResults(true).catch(() => state.rounds);
+        seasonKicker(); renderStandings(false); renderTitleRace(); renderBattle(false); renderHeroRace();
+        renderCalendar(); fillPicks(); renderH2H(false); renderFollow();
+        toast(`New results: ${state.last ? state.last.name : "standings updated"}`);
+      }
+      const sess = await S.sessions(state.mode.year, true).catch(() => null);
+      if (sess && state.sessions) {
+        const prevRace = state.sessions.completed.find(s => s.session_name === "Race")?.session_key;
+        const showing = state.session?.session_key;
+        const changed = sess.completed[0]?.session_key !== state.sessions.completed[0]?.session_key;
+        state.sessions = sess;
+        if (changed) {
+          fillSessions(); renderCalendar();
+          const race = sess.completed.find(s => s.session_name === "Race");
+          // Swap the race section only if the reader is still on the previous latest race.
+          if (race && race.session_key !== prevRace && showing === prevRace) {
+            toast(`${sessionName(race)}: telemetry is in`);
+            await loadSession(race.session_key, { hero: true, live: sess.live });
+          }
+        }
+      }
+      lastSync = Date.now();
+    } catch { /* the request log shows what failed; the next tick tries again */ }
+    finally { syncing = false; setFeed(); scheduleSync(); }
+  }
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("on");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("on"), 4200);
+  }
+
+  /* ---------- how the title fight unfolded ---------- */
+  let battleFocus = null;
+  function renderBattle(animate) {
+    const panel = $(".battle"), host = $("#battle-chart");
+    const rows = state.standings?.rows.slice(0, 6) || [];
+    panel.hidden = !state.rounds || rows.length < 2;
+    if (panel.hidden) return;
+    const used = [];
+    const series = rows.map(r => {
+      const colour = state.colourFor(r.driver.code, r.teamId);
+      const dashed = used.some(c => similar(c, colour));
+      used.push(colour);
+      return { id: r.driver.id, label: r.driver.family, colour, dashed, points: seasonLine(r.driver.id) };
+    });
+    $("#battle-keys").innerHTML = series.map(s => `<button type="button" class="key${s.dashed ? " dashed" : ""}" data-id="${esc(s.id)}" style="--c:${s.colour}" aria-pressed="${battleFocus === s.id}"><i></i>${esc(s.label)}</button>`).join("");
+    const draw = anim => {
+      charts.battle = C.lineChart(host, {
+        series, xMin: 0, yMin: 0, height: 340, animate: anim, tipMax: 6, aria: "Points after each round for the top six",
+        focus: battleFocus ? new Set([battleFocus]) : null,
+        xFmt: (v, tip) => tip ? (v ? `After round ${v}` : "Season start") : (v === 0 ? "Start" : Number.isInteger(v) ? `R${v}` : ""),
+        yFmt: (v, tip) => tip ? `${fmtPts(v)} pts` : v, xLabel: "Round"
+      });
+    };
+    if (animate) animateIn(host, draw); else draw(false);
+    resizers.set("battle", () => draw(false));
+  }
+  function focusBattle(id, sticky) {
+    if (sticky) battleFocus = battleFocus === id ? null : id;
+    const f = id || battleFocus;
+    charts.battle?.setFocus(f ? new Set([f]) : null);
+    $$("#battle-keys .key").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.id === battleFocus)));
+  }
+
+  /* ---------- driver panel ---------- */
+  let drawerReturn = null;
+  function openDriver(id, from) {
+    const row = state.standings?.rows.find(r => r.driver.id === id);
+    if (!row) return;
+    drawerReturn = from || document.activeElement;
+    const colour = state.colourFor(row.driver.code, row.teamId);
+    const s = { wins: 0, podiums: 0, dnf: 0, best: null, sum: 0, n: 0 };
+    const strip = (state.rounds || []).map((r, i) => {
+      const x = r.rows.find(v => v.driver.id === id), spr = r.sprint.find(v => v.driver.id === id);
+      if (x) {
+        if (x.pos === 1) s.wins++;
+        if (x.pos <= 3) s.podiums++;
+        if (x.finished) { s.sum += x.pos; s.n++; s.best = s.best ? Math.min(s.best, x.pos) : x.pos; } else s.dnf++;
+      }
+      const cls = !x ? "none" : !x.finished ? "out" : x.pos === 1 ? "win" : x.pos <= 3 ? "pod" : x.points > 0 ? "scored" : "";
+      return `<li class="${cls}" style="--i:${i}" title="Round ${r.round}, ${esc(r.name)}: ${x ? (x.finished ? `P${x.pos}` : esc(x.status)) : "did not start"}${spr ? `; sprint P${spr.pos}` : ""}"><b>${x ? (x.finished ? x.pos : "×") : "–"}</b><small>R${r.round}</small></li>`;
+    }).join("");
+    const model = titleModel(), c = A.chances(model, id);
+    const body = $("#drawer-body");
+    body.dataset.id = id;
+    body.style.setProperty("--c", colour);
+    body.innerHTML = `
+      <p class="dr-k">P${row.pos} · ${esc(row.team)}${row.driver.number ? ` · #${esc(row.driver.number)}` : ""}</p>
+      <h2 class="dr-name">${esc(shortName(row.driver))}</h2>
+      <dl class="dr-stats">
+        <div><dt>Points</dt><dd>${fmtPts(row.points)}</dd></div><div><dt>Wins</dt><dd>${s.wins}</dd></div><div><dt>Podiums</dt><dd>${s.podiums}</dd></div>
+        <div><dt>Best finish</dt><dd>${s.best ? `P${s.best}` : "–"}</dd></div><div><dt>Average</dt><dd>${s.n ? (s.sum / s.n).toFixed(1) : "–"}</dd></div><div><dt>Retired</dt><dd>${s.dnf}</dd></div>
+      </dl>
+      ${c ? `<p class="dr-line">${followSentence(c, model)}</p>` : ""}
+      ${strip ? `<h3>Every race this season</h3><ol class="dr-strip">${strip}</ol>` : ""}
+      <h3>Points, round by round</h3>
+      <div class="chart-host" id="dr-chart"></div>
+      <div class="dr-actions">
+        <button type="button" class="dr-btn" data-act="follow">${state.follow === id ? "Following" : "Follow this driver"}</button>
+        <button type="button" class="dr-btn ghost" data-act="compare">Compare in head to head</button>
+      </div>`;
+    const d = $("#drawer");
+    d.hidden = false;
+    document.documentElement.classList.add("drawer-lock");
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      d.classList.add("open");
+      if (state.rounds) C.lineChart($("#dr-chart"), {
+        series: [{ id, label: row.driver.family, colour, points: seasonLine(id) }], xMin: 0, yMin: 0, height: 190, animate: !C.reduced(),
+        xFmt: (v, tip) => tip ? (v ? `After round ${v}` : "Start") : (v === 0 ? "Start" : Number.isInteger(v) ? `R${v}` : ""),
+        yFmt: (v, tip) => tip ? `${fmtPts(v)} pts` : v
+      });
+      $(".drawer-x").focus({ preventScroll: true });
+    }));
+  }
+  function closeDriver() {
+    const d = $("#drawer");
+    if (d.hidden) return;
+    d.classList.remove("open");
+    document.documentElement.classList.remove("drawer-lock");
+    setTimeout(() => { d.hidden = true; }, C.reduced() ? 0 : 380);
+    drawerReturn?.focus?.({ preventScroll: true });
+  }
+  function compareWith(id) {
+    const rows = state.standings?.rows || [];
+    const other = rows[0]?.driver.id === id ? rows[1] : rows[0];
+    Object.assign(state, { a: id, b: other?.driver.id || id, picked: true });
+    $("#pick-a").value = state.a;
+    $("#pick-b").value = state.b;
+    renderH2H(true);
+    renderCompare();
+    $("#h2h").scrollIntoView({ behavior: C.reduced() ? "auto" : "smooth" });
+  }
+
+  /* Drag through the replay: the car, readouts and trail follow the scrubber. */
+  function seekHero(frac) {
+    if (!hero.tel) return;
+    const pts = hero.tel.points, t = frac * pts.at(-1).ms;
+    hero.idx = 0;
+    while (hero.idx < pts.length - 2 && pts[hero.idx + 1].ms <= t) hero.idx++;
+    const a = pts[hero.idx], b = pts[hero.idx + 1];
+    hero.angle = null;
+    place(hero.idx, Math.min(1, (t - a.ms) / (b.ms - a.ms || 1)), t);
+    hero.offset = t;
+    hero.t0 = performance.now();
   }
 
   function wire() {
@@ -1209,6 +1386,36 @@
       renderTrace(true);
     }));
     $("#more").addEventListener("click", () => { state.showAll = !state.showAll; renderStandings(false); });
+    $("#feed").title = "Checks for new results every minute on race weekends, every 10 minutes otherwise. Click to fetch everything now.";
+    $("#standings").addEventListener("click", e => { const li = e.target.closest("li[data-id]"); if (li) openDriver(li.dataset.id, li); });
+    $("#standings").addEventListener("keydown", e => {
+      if ((e.key === "Enter" || e.key === " ") && e.target.matches("li[data-id]")) { e.preventDefault(); openDriver(e.target.dataset.id, e.target); }
+    });
+    $("#drawer").addEventListener("click", e => {
+      if (e.target.closest("[data-close]")) return closeDriver();
+      const b = e.target.closest("[data-act]");
+      if (!b) return;
+      const id = $("#drawer-body").dataset.id;
+      if (b.dataset.act === "follow") { setFollow(id); b.textContent = "Following"; }
+      else { closeDriver(); compareWith(id); }
+    });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") closeDriver(); });
+    const keys = $("#battle-keys");
+    keys.addEventListener("mouseover", e => { const b = e.target.closest(".key"); if (b) focusBattle(b.dataset.id); });
+    keys.addEventListener("mouseleave", () => focusBattle(null));
+    keys.addEventListener("focusin", e => { const b = e.target.closest(".key"); if (b) focusBattle(b.dataset.id); });
+    keys.addEventListener("focusout", () => focusBattle(null));
+    keys.addEventListener("click", e => { const b = e.target.closest(".key"); if (b) focusBattle(b.dataset.id, true); });
+    const scrub = $("#r-scrub");
+    let resume = false;
+    scrub.addEventListener("pointerdown", () => { scrubbing = true; resume = !hero.paused; hero.paused = true; cancelAnimationFrame(hero.raf); });
+    scrub.addEventListener("input", () => seekHero(Number(scrub.value) / 1000));
+    const endScrub = () => {
+      if (!scrubbing) return;
+      scrubbing = false;
+      if (resume) { hero.paused = false; hero.t0 = performance.now(); loop(); }
+    };
+    ["pointerup", "pointercancel", "change"].forEach(ev => scrub.addEventListener(ev, endScrub));
     $("#pick-a").addEventListener("change", e => { state.a = e.target.value; state.picked = true; renderH2H(true); renderCompare(); });
     $("#pick-b").addEventListener("change", e => { state.b = e.target.value; state.picked = true; renderH2H(true); renderCompare(); });
     $("#session").addEventListener("change", e => { loadSession(e.target.value); });

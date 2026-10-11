@@ -30,6 +30,9 @@ Data comes from two public APIs that know nothing about each other. The page pul
 
 ### For fans
 
+- **Real time.** Results are re-checked every minute on race weekends and every 10 minutes otherwise; changes update the page in place with a short notice, and the top bar shows when it last updated.
+- **Driver panel.** Click anyone in the standings for their season: stats, every race result, points by round, title chances, and one-tap follow or compare.
+- **Interactive charts.** Highlight a driver in "How the fight unfolded", and drag through the fastest-lap replay with the scrubber.
 - **Your driver.** Pick one in the hero. It's highlighted in the standings, becomes driver A in the head to head (against the driver just ahead), is pre-selected on every race chart, and the title analytics say exactly what they need to win.
 - **Your calendar.** "Add this weekend" or "Add the rest of the season" downloads an `.ics` file with every session and a 15-minute reminder. Importing again updates events instead of duplicating them.
 - **Your time zone.** Every session time is shown in local time.

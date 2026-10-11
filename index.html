@@ -102,7 +102,7 @@
               <span class="pedal"><i id="r-thr"></i></span><span class="pedal brk"><i id="r-brk"></i></span>
               <span class="pl">Thr</span><span class="pl">Brk</span>
             </div>
-            <div class="ob-clock"><span>Lap time</span><b id="r-clock">0:00.0</b><span class="lap-prog"><i id="r-prog"></i></span></div>
+            <div class="ob-clock"><span>Lap time</span><b id="r-clock">0:00.0</b><span class="lap-prog"><i id="r-prog"></i><input type="range" id="r-scrub" min="0" max="1000" value="0" aria-label="Drag through the lap"></span></div>
           </div>
         </div>
         <div class="legend"><span>Slower</span><i id="ramp"></i><span>Faster</span></div>
@@ -170,6 +170,11 @@
           <div class="table-wrap"><table class="tr-table" id="tr-proj"></table></div>
           <p class="note">Each driver's average from the last five races, plus their sprint average, carried through the rounds left. A trend, not a prediction.</p>
         </div>
+      </div>
+      <div class="panel battle" data-reveal>
+        <div class="panel-head"><h3>How the fight unfolded</h3><div class="keys" id="battle-keys" role="group" aria-label="Highlight a driver"></div></div>
+        <div class="chart-host" id="battle-chart"></div>
+        <p class="note">Points after each round, sprints included. Hover or tap a name to follow one driver's season.</p>
       </div>
       <div class="panel road-panel" data-reveal>
         <div class="panel-head"><h3 id="road-title">Road to the title</h3></div>
@@ -320,6 +325,15 @@
       </details>
     </section>
   </main>
+
+  <div class="drawer" id="drawer" hidden>
+    <div class="drawer-bg" data-close></div>
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-label="Driver details">
+      <button class="drawer-x" type="button" data-close aria-label="Close">&times;</button>
+      <div class="drawer-body" id="drawer-body"></div>
+    </aside>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <footer class="foot">
     <div class="foot-top">
